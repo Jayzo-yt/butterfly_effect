@@ -1,0 +1,819 @@
+/* Leaflet first, so our overrides below win on equal specificity. */
+@import 'leaflet/dist/leaflet.css';
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+/* An incident command board. Dark because it is read next to a wall display,
+   and because the map is the world while the panels are instruments over it.
+
+   The rule that organises everything: SEVERITY is the only loud colour, and
+   the violet accent means "you can touch this" and nothing else. An earlier
+   version put violet on factor bars, timeline dots and tab counts, where it
+   competed with the reds and ambers that carry the actual finding. */
+
+:root {
+  --void: #070d13;
+  --panel: #101a23;
+  --raised: #17242f;
+  --line: #22313e;
+  --line-soft: #1a2733;
+
+  --text: #e9eff4;
+  --muted: #90a2b2;
+  --faint: #627585;
+
+  /* Interactive only. */
+  --action: #7b6bff;
+  --action-lift: #9a8dff;
+  --action-wash: rgba(123, 107, 255, 0.14);
+
+  /* The signal. Five steps, used everywhere a level appears. */
+  --critical: #ff5b52;
+  --high: #ff9142;
+  --moderate: #e6b53c;
+  --low: #8598a8;
+  --clear: #3fc27a;
+
+  --shadow: 0 10px 34px rgba(2, 7, 12, 0.62);
+
+  /* One scale. Everything picks from here. */
+  --t-xs: 11px;
+  --t-sm: 12px;
+  --t-md: 13px;
+  --t-lg: 15px;
+  --t-xl: 18px;
+  --t-2xl: 24px;
+  --t-3xl: 44px;
+
+  --bar-h: 52px;
+  --rail-w: 292px;
+  --deck-w: 396px;
+
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  background: var(--void);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  font-size: var(--t-md);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Figures are data: tabular, aligned, monospaced. Labels stay in the text
+   face — mono on a label is costume, not information. */
+.fig {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+button, input, select { font: inherit; }
+
+:where(button, input, select, a, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- severity, as one rule ----------
+   Any row carrying a level gets the same left edge. This replaces six separate
+   chip treatments, so an operator learns the grammar once. */
+
+[data-level] { border-left: 3px solid var(--low); }
+[data-level='critical'] { border-left-color: var(--critical); }
+[data-level='high']     { border-left-color: var(--high); }
+[data-level='moderate'] { border-left-color: var(--moderate); }
+[data-level='low']      { border-left-color: var(--low); }
+[data-level='none']     { border-left-color: var(--clear); }
+
+.lv-critical { color: var(--critical); }
+.lv-high     { color: var(--high); }
+.lv-moderate { color: var(--moderate); }
+.lv-low      { color: var(--low); }
+.lv-none     { color: var(--clear); }
+
+/* ---------- shell ---------- */
+
+.layout { position: relative; height: 100vh; width: 100vw; overflow: hidden; }
+
+.map { position: absolute; inset: var(--bar-h) 0 0 0; width: 100%; }
+
+/* The command bar carries the thing you do first: find a place. Putting it
+   here frees both rails of a masthead and a search box. */
+.bar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--bar-h);
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.mark { display: flex; align-items: baseline; gap: 9px; flex: none; }
+.mark b { font-size: var(--t-lg); font-weight: 600; letter-spacing: -0.01em; }
+.mark span { font-size: var(--t-sm); color: var(--faint); }
+
+.bar-counts { margin-left: auto; display: flex; gap: 18px; flex: none; }
+.bar-counts div { display: flex; align-items: baseline; gap: 6px; font-size: var(--t-sm); }
+.bar-counts b { font-weight: 500; }
+.bar-counts span { color: var(--faint); }
+
+@media (max-width: 900px) { .bar-counts { display: none; } }
+
+/* ---------- rails ---------- */
+
+.rail {
+  position: absolute;
+  top: calc(var(--bar-h) + 12px);
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  z-index: 500;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.rail::-webkit-scrollbar { width: 6px; }
+.rail::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+
+/* Rail children keep their natural height so the rail itself scrolls.
+   Without this the deck could not scroll at all: it sets `overflow: hidden`
+   to clip its own rounded corners, and a flex item whose overflow is not
+   visible gets `min-height: 0` — so flex squashed it to the rail's height and
+   clipped everything past the fold instead of letting the rail scroll. */
+.rail > * { flex: 0 0 auto; }
+
+.rail-left { left: 12px; width: var(--rail-w); }
+
+/* The result rail holds one deck that fills it: the verdict and the tab strip
+   stay put while the body scrolls, so the answer and the way to the other
+   views are always on screen. */
+.rail-right { right: 12px; width: var(--deck-w); overflow: hidden; }
+.rail-right > .deck { display: flex; flex-direction: column; max-height: 100%; }
+.rail-right > .deck > .verdict, .rail-right > .deck > .tabs { flex: 0 0 auto; }
+.rail-right > .deck > .deck-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.rail-right > .deck > .deck-body::-webkit-scrollbar { width: 6px; }
+.rail-right > .deck > .deck-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+
+/* Two surfaces, by role — not one card stamped on everything. A panel is an
+   instrument you operate; the deck is the finding you read. */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.deck {
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+/* A key is not a card. It sits on the map. */
+.key { padding: 12px 14px; border-top: 1px solid var(--line); }
+
+.panel-title {
+  margin: 0 0 11px;
+  font-size: var(--t-md);
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.panel-title small { font-weight: 400; font-size: var(--t-sm); color: var(--faint); }
+
+.note { margin: 0; font-size: var(--t-sm); color: var(--muted); }
+
+/* ---------- the verdict ----------
+   The one place boldness is spent: score, band, and the single next action,
+   because "what do I do now" is what the tool exists to answer and it used to
+   sit three tabs away. */
+
+.verdict { position: relative; padding: 16px 16px 14px; border-bottom: 1px solid var(--line); }
+.verdict::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--band, var(--low));
+}
+.verdict-top { display: flex; align-items: flex-start; gap: 14px; padding-right: 30px; }
+.verdict-score {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-3xl);
+  line-height: 0.92;
+  font-weight: 500;
+  color: var(--band, var(--text));
+  letter-spacing: -0.03em;
+  flex: none;
+}
+.verdict-of { font-size: var(--t-xs); color: var(--faint); display: block; margin-top: 5px; }
+.verdict-what { min-width: 0; flex: 1; }
+.verdict-band { font-size: var(--t-sm); font-weight: 600; color: var(--band, var(--text)); }
+.verdict-where { margin: 1px 0 0; font-size: var(--t-lg); font-weight: 600; line-height: 1.25; }
+.verdict-meta { margin: 3px 0 0; font-size: var(--t-sm); color: var(--muted); }
+
+.verdict-next { margin-top: 13px; padding-top: 12px; border-top: 1px solid var(--line); }
+.verdict-next h3 { margin: 0 0 5px; font-size: var(--t-sm); font-weight: 500; color: var(--band, var(--muted)); }
+.verdict-next p { margin: 0; font-size: var(--t-md); line-height: 1.5; }
+.verdict-next em { font-style: normal; color: var(--muted); }
+
+.collapse {
+  position: absolute;
+  top: 13px;
+  right: 13px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--muted);
+  cursor: pointer;
+  line-height: 1;
+}
+.collapse:hover { color: var(--text); border-color: var(--faint); }
+
+/* With the deck away, the verdict stays as a strip, so the answer is never
+   lost while looking at the ground. */
+.strip {
+  position: absolute;
+  top: calc(var(--bar-h) + 12px);
+  right: 12px;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 13px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--band, var(--low));
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  color: var(--text);
+  max-width: 330px;
+}
+.strip:hover { border-color: var(--faint); }
+.strip b {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: var(--t-xl);
+  color: var(--band, var(--text));
+  font-weight: 500;
+}
+.strip span { font-size: var(--t-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- tabs ---------- */
+
+.tabs { display: flex; border-bottom: 1px solid var(--line); background: var(--panel); }
+.tab {
+  flex: 1;
+  padding: 10px 4px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--t-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.tab:hover { color: var(--text); }
+.tab-on { color: var(--text); font-weight: 500; border-bottom-color: var(--action); }
+.tab-count { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10px; color: var(--faint); }
+.tab-on .tab-count { color: var(--muted); }
+
+.deck-body { padding: 14px; }
+
+/* ---------- form ---------- */
+
+.field { display: block; margin-bottom: 11px; }
+.field > span {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--t-sm);
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.field > span small { color: var(--faint); font-size: var(--t-xs); }
+.field-note { display: block; margin-top: 4px; font-size: var(--t-xs); color: var(--faint); line-height: 1.45; }
+
+select, input[type='number'], input[type='search'] {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--void);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: var(--t-md);
+}
+select:hover, input:hover { border-color: var(--faint); }
+select:disabled { opacity: 0.5; }
+
+.picked {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 9px 11px;
+  border-radius: 6px;
+  background: var(--void);
+  border: 1px solid var(--line);
+}
+.picked strong { font-size: var(--t-md); }
+.picked em { font-style: normal; font-size: var(--t-xs); color: var(--faint); }
+.picked-empty { color: var(--muted); font-size: var(--t-sm); }
+
+.link-quiet {
+  align-self: flex-start;
+  margin-top: 4px;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--action);
+  font-size: var(--t-xs);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.link-quiet:hover { color: var(--action-lift); }
+
+.actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 12px; }
+
+.btn {
+  padding: 9px 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: var(--t-md);
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn:disabled { opacity: 0.42; cursor: not-allowed; }
+.btn-primary { background: var(--action); color: #120c33; }
+.btn-primary:not(:disabled):hover { background: var(--action-lift); }
+.btn-quiet { background: transparent; border-color: var(--line); color: var(--text); }
+.btn-quiet:not(:disabled):hover { background: var(--panel); border-color: var(--faint); }
+
+.queued { list-style: none; margin: 0 0 11px; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.queued li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1px 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--void);
+  border: 1px solid var(--line);
+  font-size: var(--t-sm);
+}
+.queued li em { grid-column: 1; font-style: normal; font-size: var(--t-xs); color: var(--faint); }
+.queued li button { grid-row: 1 / span 2; align-self: center; margin: 0; }
+
+/* ---------- search, in the bar ---------- */
+
+.search { position: relative; flex: 1; max-width: 460px; }
+.search input { padding-left: 32px; }
+.search::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  margin-top: -7px;
+  border: 1.5px solid var(--faint);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.search::after {
+  content: '';
+  position: absolute;
+  left: 21px;
+  top: 50%;
+  width: 5px;
+  height: 1.5px;
+  margin-top: 3px;
+  background: var(--faint);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+.search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 340px;
+  overflow-y: auto;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  z-index: 10;
+}
+.search-results button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  padding: 7px 9px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: grid;
+  gap: 1px;
+}
+.search-results button:hover { background: var(--panel); }
+.search-name { font-size: var(--t-md); font-weight: 500; }
+.search-meta { font-size: var(--t-xs); color: var(--muted); display: flex; gap: 7px; }
+.search-meta span { margin-left: auto; color: var(--faint); }
+.search-empty {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  padding: 11px 13px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  font-size: var(--t-sm);
+  color: var(--muted);
+  z-index: 10;
+}
+
+/* ---------- readouts ---------- */
+
+.readout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  overflow: hidden;
+}
+.readout > div { background: var(--panel); padding: 10px 12px; }
+.readout .v { font-size: var(--t-2xl); font-weight: 500; line-height: 1.1; }
+.readout .k { font-size: var(--t-xs); color: var(--faint); margin-top: 1px; line-height: 1.35; }
+.readout .k-note { font-style: italic; }
+
+.block { margin-top: 14px; }
+.block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--t-sm);
+  color: var(--muted);
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+.block-head b { color: var(--text); font-weight: 500; }
+
+.row { display: flex; justify-content: space-between; gap: 10px; font-size: var(--t-sm); padding: 4px 0; }
+.row > span { color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row > strong { flex: none; font-weight: 500; }
+.row > strong em { font-style: normal; color: var(--faint); font-weight: 400; }
+
+.dispatch { padding: 3px 0; }
+.dispatch-detail { margin: 1px 0 0; font-size: var(--t-xs); color: var(--faint); line-height: 1.45; }
+.dispatch .provenance { margin-top: 2px; }
+
+.direct {
+  padding: 11px 12px;
+  border-radius: 7px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+.direct-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.direct-head strong { font-size: var(--t-md); }
+.direct-head span { font-size: var(--t-xs); flex: none; font-weight: 500; }
+.direct p { margin: 5px 0 0; font-size: var(--t-sm); color: var(--muted); }
+
+.explain {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 7px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: var(--t-sm);
+  color: var(--muted);
+  line-height: 1.5;
+}
+.explain-warn { color: var(--moderate); border-color: rgba(230, 181, 60, 0.32); }
+
+.provenance { margin: 8px 0 0; font-size: var(--t-xs); color: var(--faint); font-style: italic; line-height: 1.45; }
+
+.confidence {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: var(--t-xs);
+  color: var(--muted);
+  line-height: 1.5;
+}
+.confidence b { color: var(--text); }
+
+/* ---------- score factors ---------- */
+
+.factors { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.factors li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 8px;
+  padding: 6px 9px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--panel);
+  font-size: var(--t-sm);
+}
+.factor-bar { position: absolute; inset: 0 auto 0 0; background: var(--action-wash); }
+.factor-label { position: relative; font-weight: 500; }
+.factor-points { position: relative; color: var(--muted); font-size: var(--t-xs); }
+.factor-detail { position: relative; grid-column: 1 / -1; font-size: var(--t-xs); color: var(--faint); }
+
+/* ---------- affected list ---------- */
+
+.affected { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.affected > li { padding-left: 9px; }
+.affected-head {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1px 9px;
+  align-items: baseline;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  padding: 7px 4px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+.affected-head:hover { background: var(--panel); }
+.affected-name { font-size: var(--t-md); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.affected-sub { grid-column: 1; font-size: var(--t-xs); color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.affected-delta { font-size: var(--t-sm); flex: none; }
+
+.affected-detail { padding: 2px 4px 12px; font-size: var(--t-sm); }
+.why { margin: 0 0 8px; line-height: 1.5; }
+.pairs { margin: 0; display: flex; flex-direction: column; gap: 3px; }
+.pairs > div { display: flex; justify-content: space-between; gap: 10px; }
+.pairs dt { color: var(--faint); }
+.pairs dd { margin: 0; text-align: right; }
+
+.technical { margin-top: 10px; }
+.technical summary { cursor: pointer; font-size: var(--t-xs); color: var(--faint); }
+.technical summary:hover { color: var(--muted); }
+.technical > *:not(summary) { margin-top: 8px; font-size: var(--t-xs); }
+
+/* ---------- comparison ---------- */
+
+.table-scroll { overflow-x: auto; }
+.compare { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
+.compare th, .compare td { padding: 8px 6px; text-align: right; border-bottom: 1px solid var(--line-soft); }
+.compare thead th { color: var(--faint); font-weight: 400; font-size: var(--t-xs); }
+.compare tbody th { text-align: left; font-weight: 400; display: flex; flex-direction: column; gap: 1px; }
+.compare tbody th em { font-style: normal; font-size: var(--t-xs); color: var(--faint); }
+.compare td { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.change-worse { color: var(--critical); }
+.change-better { color: var(--clear); }
+.change-none { color: var(--faint); }
+
+/* ---------- actions ---------- */
+
+.action-group { margin-bottom: 14px; }
+.action-heading {
+  margin: 0 0 7px;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--line);
+}
+.action-heading span { color: var(--faint); font-weight: 400; font-size: var(--t-xs); }
+
+.action-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.action-list li { padding-left: 10px; }
+.action-where { font-size: var(--t-xs); color: var(--faint); }
+.action-text { margin: 1px 0 3px; font-size: var(--t-md); line-height: 1.5; }
+.action-basis { margin: 0; font-size: var(--t-xs); color: var(--faint); line-height: 1.45; }
+
+/* ---------- timeline ---------- */
+
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li { position: relative; display: grid; grid-template-columns: 54px 1fr; gap: 10px; padding-bottom: 14px; }
+.timeline li:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 60px;
+  top: 16px;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+.timeline-time {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: var(--t-xs);
+  color: var(--muted);
+  text-align: right;
+  padding-top: 1px;
+}
+.timeline-body { padding-left: 12px; }
+.timeline-body strong { font-size: var(--t-md); font-weight: 500; }
+.timeline-body p { margin: 2px 0 0; font-size: var(--t-xs); color: var(--muted); line-height: 1.5; }
+
+/* ---------- cascade ---------- */
+
+.cascade-scroll { overflow-x: auto; margin: 10px -2px 12px; padding: 2px; }
+.cascade-node { cursor: pointer; }
+.cascade-node-name { fill: var(--text); font-size: 11px; font-weight: 500; }
+.cascade-node-meta { fill: var(--faint); font-size: 9.5px; }
+.cascade-band { fill: var(--faint); font-size: 10px; }
+
+.cascade-detail { padding: 11px 12px; border-radius: 7px; background: var(--panel); border: 1px solid var(--line); }
+.cascade-detail h3 { margin: 0 0 7px; font-size: var(--t-md); }
+.cascade-detail .pairs { margin-bottom: 8px; }
+
+.gap-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: var(--t-xs);
+  color: var(--muted);
+  line-height: 1.5;
+}
+.gap-list li { padding-left: 9px; }
+.coverage { margin: 8px 0 0; font-size: var(--t-xs); display: flex; flex-direction: column; gap: 3px; }
+.coverage > div { display: flex; justify-content: space-between; gap: 10px; }
+.coverage dt { color: var(--faint); }
+.coverage dd { margin: 0; }
+
+/* ---------- history ---------- */
+
+.history {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 2px;
+  max-height: 168px; overflow-y: auto;
+}
+.history button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1px 9px;
+  align-items: center;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  padding: 6px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.history button:hover { background: var(--panel); }
+.history-score { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: var(--t-sm); grid-row: 1 / span 2; }
+.history-title { font-size: var(--t-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history button em { grid-column: 2; font-style: normal; font-size: var(--t-xs); color: var(--faint); }
+
+/* ---------- layers ---------- */
+
+.layers { display: flex; flex-direction: column; gap: 5px; }
+.layer-toggle { display: flex; align-items: center; gap: 8px; font-size: var(--t-sm); color: var(--muted); cursor: pointer; }
+.layer-toggle input { width: auto; accent-color: var(--action); }
+
+/* ---------- states ---------- */
+
+.loading { position: absolute; inset: 0; display: grid; place-items: center; gap: 10px; color: var(--muted); }
+.pulse {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  border-top-color: var(--action);
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.banner {
+  padding: 9px 11px;
+  border-radius: 6px;
+  font-size: var(--t-sm);
+  background: rgba(255, 91, 82, 0.1);
+  border: 1px solid rgba(255, 91, 82, 0.3);
+  color: #ff9b94;
+}
+
+.start { padding: 16px; }
+.start h2 { margin: 0 0 6px; font-size: var(--t-lg); font-weight: 600; }
+.start p { margin: 0 0 12px; font-size: var(--t-sm); color: var(--muted); line-height: 1.55; }
+.start ol { margin: 0; padding-left: 17px; font-size: var(--t-sm); color: var(--muted); }
+.start li { margin-bottom: 5px; }
+.start li b { color: var(--text); font-weight: 500; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+@media (max-width: 980px) {
+  .layout { display: flex; flex-direction: column; height: auto; min-height: 100vh; overflow: visible; }
+  .bar { position: sticky; }
+  .map { position: relative; inset: auto; height: 46vh; }
+  .rail { position: static; width: auto; padding: 0 12px; }
+  /* Stacked on a narrow screen, the page scrolls rather than the deck. */
+  .rail-right { overflow: visible; }
+  .rail-right > .deck { max-height: none; }
+  .rail-right > .deck > .deck-body { overflow-y: visible; }
+  .rail-left { padding-top: 12px; }
+  .rail-right { padding-bottom: 12px; }
+  .strip { display: none; }
+}
+
+/* ---------- Leaflet ---------- */
+
+.leaflet-container { background: #060b10; font-family: inherit; }
+
+/* Darken the standard OSM raster so the basemap recedes and the status colours
+   carry the signal. Applied per tile, not to .leaflet-tile-pane: that pane is a
+   zero-size box, and a filter on it clips what its children paint. */
+.leaflet-tile { filter: invert(1) hue-rotate(187deg) brightness(1.02) contrast(0.82) saturate(0.5); }
+
+/* Once there is a finding, the ground quietens so attention goes where the
+   analysis points. */
+.map-focused .leaflet-tile { filter: invert(1) hue-rotate(187deg) brightness(0.84) contrast(0.7) saturate(0.3); }
+
+.leaflet-bottom.leaflet-left { left: calc(var(--rail-w) + 24px); }
+@media (max-width: 980px) { .leaflet-bottom.leaflet-left { left: 0; } }
+.leaflet-control-zoom a {
+  background: var(--panel) !important;
+  color: var(--text) !important;
+  border-color: var(--line) !important;
+}
+.leaflet-control-zoom a:hover { background: var(--raised) !important; }
+.leaflet-tooltip {
+  background: var(--raised);
+  border: 1px solid var(--line);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: var(--t-sm);
+  border-radius: 6px;
+  padding: 6px 9px;
+}
+.leaflet-tooltip::before { display: none; }
+.leaflet-tooltip em { font-style: normal; color: var(--faint); }
+.leaflet-control-attribution {
+  background: rgba(7, 13, 19, 0.82) !important;
+  color: var(--faint) !important;
+  font-size: 10px !important;
+}
+.leaflet-control-attribution a { color: var(--muted) !important; }
+
+.incident-pin {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 91, 82, 0.2);
+  border: 2px solid var(--critical);
+}
+.incident-pin span { width: 9px; height: 9px; border-radius: 50%; background: var(--critical); }
+@media (prefers-reduced-motion: no-preference) {
+  .incident-pin { animation: ping 2.6s ease-out infinite; }
+  @keyframes ping {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 91, 82, 0.34); }
+    50% { box-shadow: 0 0 0 10px rgba(255, 91, 82, 0); }
+  }
+}

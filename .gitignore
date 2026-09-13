@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Node / build output — the frontend is built from source (see README)
+frontend/node_modules/
+frontend/dist/
+
+# osmnx's HTTP cache: regenerable, and megabytes of it
+cache/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local tooling state
+.claude/scheduled_tasks.lock
+
+# Working copies of the city extract kept while re-ingesting. The committed
+# data/city/*.json files are the live ones; these are scratch.
+data/city/*.prefix.json
+data/city/*.pre-length.json
+data/city/*.backup.json

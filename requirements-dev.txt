@@ -1,0 +1,6 @@
+# Only needed to regenerate the city data from OpenStreetMap.
+# The API and the tests do not import any of this — see README, "Regenerating
+# the data". The Docker runtime image deliberately excludes it.
+-r requirements.txt
+osmnx>=1.9
+requests>=2.31
