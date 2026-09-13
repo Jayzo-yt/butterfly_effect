@@ -1,0 +1,8 @@
+# Runtime dependencies. Deliberately small: the deployed API needs
+# nothing heavier than networkx, because the city data is pre-ingested.
+# For the ingestion scripts see requirements-dev.txt.
+networkx>=3.0
+pytest>=7.0
+fastapi>=0.100
+uvicorn>=0.23
+httpx>=0.24
