@@ -36,6 +36,9 @@ def _phase(minute, label, state, detail, basis):
             "detail": detail, "basis": basis}
 
 
+WAVE_RANK = {"low": 0, "moderate": 1, "high": 2, "critical": 3}
+
+
 def plan(requests, result) -> dict:
     """Recovery stages for the scenario, from the incidents' own profiles."""
     longest = max(r.duration_hours for r in requests) * 60.0
@@ -175,9 +178,12 @@ def timeline(requests, result, recovery: dict) -> List[dict]:
             continue
         network = node.get("via_network")
         delay = NETWORKS[network].propagation_delay_min if network in NETWORKS else 15
-        waves.setdefault((max(onset, delay * node["round"]), network, node["level"]), []).append(node)
+        waves.setdefault((max(onset, delay * node["round"]), network), []).append(node)
 
-    for (minute, network, level), group in waves.items():
+    for (minute, network), group in waves.items():
+        # One line per wave, graded by the worst asset in it. Keying on level as
+        # well split a single wave into two entries at the same minute.
+        level = max((n["level"] for n in group), key=lambda x: WAVE_RANK.get(x, 0))
         label = NETWORKS[network].label.lower() if network in NETWORKS else "service"
         group.sort(key=lambda n: -(CATEGORIES[n["category"]].criticality
                                    if n["category"] in CATEGORIES else 0))
