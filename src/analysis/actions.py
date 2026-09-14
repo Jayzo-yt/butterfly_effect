@@ -272,8 +272,17 @@ def build(result: dict) -> List[dict]:
             "no service was lost and nothing downstream depends on what was hit.",
             result["summary"].get("explanation") or "Measured, not assumed."))
 
-    out.sort(key=lambda a: ORDER[a["priority"]])
-    return out
+    # Two incidents on the same road, or two assets sharing a name, produce the
+    # same sentence twice. The duplicate carries no extra information.
+    seen, unique = set(), []
+    for a in out:
+        if a["text"] in seen:
+            continue
+        seen.add(a["text"])
+        unique.append(a)
+
+    unique.sort(key=lambda a: ORDER[a["priority"]])
+    return unique
 
 
 def demo():

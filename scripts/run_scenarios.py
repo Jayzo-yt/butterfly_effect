@@ -41,6 +41,25 @@ def pick(facilities, category, near, contains=None):
     return min(options, key=lambda f: meters_between((f.lat, f.lon), near))
 
 
+def feeds_most(facilities, category, model):
+    """The asset of this category that the most others depend on.
+
+    Picking the substation nearest the town centre found one that feeds two
+    schools — a true result, but it shows none of the propagation the model is
+    for. The interesting demonstration is the supplier with the deepest
+    downstream, which is also the one an operator would most want to ask about.
+    """
+    from collections import Counter
+    load = Counter(link.source for link in model.links)
+    options = [f for f in facilities if f.category == category and load[f.id]]
+    if not options:
+        return None
+    # Named first: the largest downstream here belongs to an unnamed substation,
+    # and "Unnamed electrical substation near KRCL" is a worse thing to read in a
+    # report than the named one two thirds its size.
+    return max(options, key=lambda f: (bool(f.name), load[f.id]))
+
+
 def urban_core(facilities):
     """Where the assets cluster — a good stand-in for the town centre."""
     lat = sum(f.lat for f in facilities) / len(facilities)
@@ -187,7 +206,7 @@ def main():
     road = busiest_road(template)
     school = pick(facilities, "school", core)
     hospital = pick(facilities, "hospital", core)
-    substation = pick(facilities, "substation", core)
+    substation = feeds_most(facilities, "substation", model)
 
     scenarios = []
     if road:
