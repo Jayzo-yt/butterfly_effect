@@ -30,7 +30,7 @@ function FlyTo({ focus }) {
 
 // An unaffected asset is context, not a finding: it takes the same grey the
 // road network sits in rather than a colour of its own.
-const ASSET_QUIET = '#55709a'
+const ASSET_QUIET = '#7089ad'
 
 const LEVEL_COLOR = {
   critical: COLORS.critical,
@@ -44,13 +44,16 @@ const LEVEL_COLOR = {
  *  they are the city around it. Before a run everything is quiet and equal;
  *  once there is a result, anything untouched steps back to a mark you can see
  *  but do not read. */
-function facilityIcon(category, color, emphasis, recede) {
-  const size = emphasis ? 24 : 16
+function facilityIcon(category, color, emphasis, recede, selected) {
+  const size = emphasis ? 26 : 19
   const glyph = Math.round(size * 0.58)   // the mark needs air, or a filled
                                           // symbol reads as a solid block
-  const opacity = recede ? 0.22 : emphasis ? 1 : 0.5
-  const border = emphasis ? 1.5 : 1
-  const lift = emphasis ? 'box-shadow:0 0 0 3px rgba(0,0,0,.5);' : ''
+  // Stepping back is not the same as disappearing: an asset outside the finding
+  // still has to be findable and clickable.
+  const opacity = recede ? 0.55 : 1
+  const border = emphasis || selected ? 1.5 : 1
+  const lift = selected ? `box-shadow:0 0 0 2px ${COLORS.accent};`
+    : emphasis ? 'box-shadow:0 0 0 3px rgba(0,0,0,.5);' : ''
   return L.divIcon({
     className: '',
     iconSize: [size, size],
@@ -261,9 +264,10 @@ export default function MapView({
               <Marker
                 key={f.id}
                 position={[f.lat, f.lon]}
-                icon={facilityIcon(f.category, LEVEL_COLOR[level] ?? ASSET_QUIET, affected,
-                                   Boolean(result) && !affected)}
-                zIndexOffset={affected ? 500 : 0}
+                icon={facilityIcon(f.category, affected ? LEVEL_COLOR[level] : ASSET_QUIET,
+                                   affected, Boolean(result) && !affected,
+                                   target?.id === f.id)}
+                zIndexOffset={target?.id === f.id ? 700 : affected ? 500 : 0}
                 eventHandlers={{ click: () => onSelectAsset(f) }}
               >
                 <Tooltip direction="top" offset={[0, -12]}>
@@ -291,16 +295,6 @@ export default function MapView({
             )
           ))}
 
-          {target?.kind === 'asset' && !result && (
-            <CircleMarker
-              center={[target.lat, target.lon]}
-              radius={11}
-              pathOptions={{
-                color: COLORS.accent, weight: 1.5,
-                fillColor: COLORS.accent, fillOpacity: 0.2,
-              }}
-            />
-          )}
           {target?.kind === 'road' && !result && pos[target.nodes[0]] && (
             <CircleMarker
               center={pos[target.nodes[0]]}

@@ -131,38 +131,50 @@ export default function App() {
     return map
   }, [facilities])
 
-  const selectRoad = useCallback((u, v) => {
+  // Clicking the thing that is already selected clears it. `toggle` is off for
+  // the search box, where picking the road you already have should keep it
+  // rather than quietly unpick it.
+  const selectRoad = useCallback((u, v, toggle = true) => {
     const edge = roadIndex[`${u}|${v}`]
     const klass = ROAD_CLASS_LABEL[edge?.road_class] ?? 'Road'
-    setTarget({
-      kind: 'road',
-      nodes: [u, v],
-      // Preview only — once analysed, the server supplies the full label
-      // including the nearest landmark for unnamed roads.
-      name: (edge?.name || '').split(';')[0].trim() || `Unnamed ${klass.toLowerCase()}`,
-      detail: klass,
-      named_in_osm: Boolean(edge?.name),
+    setTarget((cur) => {
+      const same = cur?.kind === 'road'
+        && ((cur.nodes[0] === u && cur.nodes[1] === v)
+          || (cur.nodes[0] === v && cur.nodes[1] === u))
+      if (same && toggle) return null
+      return {
+        kind: 'road',
+        nodes: [u, v],
+        // Preview only — once analysed, the server supplies the full label
+        // including the nearest landmark for unnamed roads.
+        name: (edge?.name || '').split(';')[0].trim() || `Unnamed ${klass.toLowerCase()}`,
+        detail: klass,
+        named_in_osm: Boolean(edge?.name),
+      }
     })
     setRunError(null)
   }, [roadIndex])
 
-  const selectAsset = useCallback((facility) => {
+  const selectAsset = useCallback((facility, toggle = true) => {
     if (!facility) return
-    setTarget({
-      kind: 'asset',
-      id: facility.id,
-      name: facility.name,
-      detail: [facility.category_label, facility.area].filter(Boolean).join(', '),
-      category: facility.category,
-      lat: facility.lat,
-      lon: facility.lon,
+    setTarget((cur) => {
+      if (cur?.kind === 'asset' && cur.id === facility.id && toggle) return null
+      return {
+        kind: 'asset',
+        id: facility.id,
+        name: facility.name,
+        detail: [facility.category_label, facility.area].filter(Boolean).join(', '),
+        category: facility.category,
+        lat: facility.lat,
+        lon: facility.lon,
+      }
     })
     setRunError(null)
   }, [])
 
   const handleSearchPick = (entry) => {
-    if (entry.kind === 'road' && entry.edge) selectRoad(entry.edge[0], entry.edge[1])
-    else if (entry.kind === 'asset') selectAsset(facilityIndex[entry.id])
+    if (entry.kind === 'road' && entry.edge) selectRoad(entry.edge[0], entry.edge[1], false)
+    else if (entry.kind === 'asset') selectAsset(facilityIndex[entry.id], false)
     if (entry.lat != null) setFocus([entry.lat, entry.lon])
   }
 
@@ -235,7 +247,11 @@ export default function App() {
   const band = result && (result.score.level === 'none' ? 'clear' : result.score.level)
 
   return (
-    <div className="layout" data-deck={deckOpen ? 'open' : 'closed'}>
+    <div
+      className="layout"
+      data-deck={deckOpen ? 'open' : 'closed'}
+      style={band ? { '--band': `var(--${band})` } : undefined}
+    >
       <CommandBar counts={counts} online={Boolean(city)} onPick={handleSearchPick} />
 
       <MapView
