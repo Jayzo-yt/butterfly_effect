@@ -7,3 +7,9 @@ frontend/package-lock.json linguist-generated=true
 
 # GitHub language stats should reflect the engine, not the data.
 data/** linguist-detectable=false
+
+# Images are binary. `text=auto` detects this, but say so explicitly: line-ending
+# normalisation on a PNG corrupts it silently.
+*.png binary
+*.jpg binary
+*.svg text

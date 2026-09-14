@@ -7,7 +7,18 @@ to real data, a documented calculation, or a labelled estimate.
 
 Built for Manipal Hackathon 2026 (M#26), "The Butterfly Effect", on a real
 OpenStreetMap extract of Udupi and Manipal, Karnataka: 2,619 junctions, 3,507
-road segments, 166 mapped assets.
+road segments, 161 mapped assets.
+
+![The console, mid-incident: a hospital fire at Sunag Ortho Care, scored 54 of
+100, with the cordon and the evacuation routes drawn on the map and the
+consequence the operator cannot see from the street — a clinic left with no
+remaining vehicle route — named beside it.](docs/screenshot.png)
+
+A fire at a hospital, scored against the engine's own band cut-offs. The worst
+consequence is not the building that is burning: it is **Dr. Muralidhara
+Sharma**, a clinic with no remaining route in, because the cordon around the
+incident closed the only street that reached it. Along the bottom, when each
+consequence arrives.
 
 ---
 
