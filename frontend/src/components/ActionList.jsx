@@ -1,5 +1,5 @@
 const WHEN = {
-  critical: 'Now', high: 'Within minutes', moderate: 'Prepare', low: 'Longer term',
+  critical: 'Immediate', high: 'Within minutes', moderate: 'Prepare', low: 'Longer term',
 }
 
 /** Grouped by how soon, edged by how serious — the same severity grammar the
@@ -12,7 +12,10 @@ export default function ActionList({ actions }) {
 
   return (
     <>
-      <div className="block-head">Recommended actions<b>{actions.length}</b></div>
+      <div className="head">
+        <span className="cap">Recommended actions</span>
+        <b>{actions.length}</b>
+      </div>
 
       {groups.map(([priority, list]) => (
         <div key={priority} className="action-group">

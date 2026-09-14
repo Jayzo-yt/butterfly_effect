@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
+import { Glyph } from '../glyphs'
 
 /** The first thing you do, so it lives in the command bar rather than in a
  *  rail. Operators know "KMC Hospital" and "NH 66"; nobody knows
  *  way/256638639, so ids are neither searchable nor shown. */
+/** OSM keeps alternate spellings in one `name`, separated by semicolons:
+ *  "Malpe-Manipal Road;Malpe - Manipal Road". Show the first. */
+const firstName = (name) => (name || '').split(';')[0].trim() || name
+
 export default function SearchBox({ onPick }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState(null)
@@ -38,11 +43,16 @@ export default function SearchBox({ onPick }) {
 
   return (
     <div className="search" ref={box}>
+      <svg className="search-glass" viewBox="0 0 24 24" width="13" height="13"
+           fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="6" />
+        <path d="M16 16l4 4" />
+      </svg>
       <input
         type="search"
         value={query}
-        placeholder="Find a road, asset or area"
-        aria-label="Find a road, asset or area"
+        placeholder="Search asset, road or area"
+        aria-label="Search asset, road or area"
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={(e) => e.key === 'Escape' && setResults(null)}
         autoComplete="off"
@@ -58,13 +68,17 @@ export default function SearchBox({ onPick }) {
                 justPicked.current = true
                 onPick(r)
                 setResults(null)
-                setQuery(r.name)
+                setQuery(firstName(r.name))
               }}>
-                <span className="search-name">{r.name}</span>
+                <span className="search-icon">
+                  <Glyph category={r.kind === 'road' ? 'road' : r.kind === 'area' ? 'area' : r.category}
+                         size={13} />
+                </span>
+                <span className="search-name">{firstName(r.name)}</span>
+                <span className="search-kind">{r.kind}</span>
                 <span className="search-meta">
                   {r.type}{r.area ? `, ${r.area}` : ''}
-                  {r.supplies > 0 ? ` — supplies ${r.supplies} asset${r.supplies === 1 ? '' : 's'}` : ''}
-                  <span>{r.kind === 'road' ? 'road' : r.kind === 'area' ? 'area' : 'asset'}</span>
+                  {r.supplies > 0 ? ` · supplies ${r.supplies} asset${r.supplies === 1 ? '' : 's'}` : ''}
                 </span>
               </button>
             </li>
@@ -72,8 +86,8 @@ export default function SearchBox({ onPick }) {
         </ul>
       ) : (
         <p className="search-empty">
-          Nothing named “{results.query}” here. Try a category — hospital, water tower — or a
-          shorter name.
+          Nothing named &ldquo;{results.query}&rdquo; here. Try a category &mdash; hospital, water
+          tower &mdash; or a shorter name.
         </p>
       ))}
     </div>

@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api'
 import ActionList from './components/ActionList'
 import AffectedList from './components/AffectedList'
 import CascadeDiagram from './components/CascadeDiagram'
+import CommandBar from './components/CommandBar'
 import ComparisonTable from './components/ComparisonTable'
+import EventStrip from './components/EventStrip'
 import HistoryPanel from './components/HistoryPanel'
 import Verdict, { ImpactDetail } from './components/ImpactSummary'
 import IncidentBuilder from './components/IncidentBuilder'
 import LayerFilters from './components/LayerFilters'
 import MapView from './components/MapView'
-import SearchBox from './components/SearchBox'
 import Timeline from './components/Timeline'
 
 // Mirrors ROAD_CLASS_LABEL in src/analysis/impact.py — an operator reads
@@ -28,6 +29,17 @@ const TABS = [
   ['compare', 'vs normal'],
   ['actions', 'Actions'],
   ['timeline', 'Timeline'],
+]
+
+// What the engine is actually doing, in the order it does it. Shown while the
+// request is in flight and dropped the moment it answers — on this dataset it
+// usually answers before the second line, which is the honest impression to
+// give of how fast it is.
+const STAGES = [
+  'Applying disruption to the network',
+  'Routing emergency access',
+  'Propagating dependencies',
+  'Scoring impact',
 ]
 
 const mercY = (lat) => {
@@ -75,15 +87,17 @@ export default function App() {
   const [target, setTarget] = useState(null)   // {kind:'road'|'asset', ...}
   const [result, setResult] = useState(null)
   const [running, setRunning] = useState(false)
+  const [stage, setStage] = useState(0)
   const [runError, setRunError] = useState(null)
   const [tab, setTab] = useState('impact')
   const [focus, setFocus] = useState(null)     // map focus: [lat, lon]
-  const [deckOpen, setDeckOpen] = useState(true)
+  const [deckOpen, setDeckOpen] = useState(() => window.innerWidth > 880)
   const [history, setHistory] = useState(loadHistory)
+  const stageTimer = useRef(null)
 
   const [layers, setLayers] = useState({
     roads: true, facilities: true, zone: true, cascade: true,
-    evacuation: true, affectedOnly: false,
+    evacuation: true, graticule: true, affectedOnly: false,
   })
 
   useEffect(() => {
@@ -96,6 +110,8 @@ export default function App() {
       })
       .catch((e) => setLoadError(e.message))
   }, [])
+
+  useEffect(() => () => clearInterval(stageTimer.current), [])
 
   // Road names come from the network, so selection can show "Malpe - Manipal
   // Road" rather than the pair of node ids that identify the segment.
@@ -166,7 +182,13 @@ export default function App() {
   const run = async (specs = queued) => {
     if (!specs.length) return
     setRunning(true)
+    setStage(0)
     setRunError(null)
+    // The stages advance while the request is genuinely outstanding. Nothing
+    // is padded: if the engine answers in 120 ms the first line is all anyone
+    // ever sees.
+    stageTimer.current = setInterval(
+      () => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 260)
     try {
       const payload = specs.map(({ _label, ...rest }) => rest)
       const r = await api.simulate(payload)
@@ -189,6 +211,7 @@ export default function App() {
     } catch (e) {
       setRunError(e.message)
     } finally {
+      clearInterval(stageTimer.current)
       setRunning(false)
     }
   }
@@ -209,21 +232,11 @@ export default function App() {
     facilities: facilities.length,
   }
 
+  const band = result && (result.score.level === 'none' ? 'clear' : result.score.level)
+
   return (
     <div className="layout">
-      <header className="bar">
-        <div className="mark">
-          <b>City Disruption</b>
-          <span>Udupi &amp; Manipal</span>
-        </div>
-        <SearchBox onPick={handleSearchPick} />
-        {counts && (
-          <div className="bar-counts">
-            <div><b className="fig">{counts.roads.toLocaleString()}</b><span>road segments</span></div>
-            <div><b className="fig">{counts.facilities}</b><span>assets</span></div>
-          </div>
-        )}
-      </header>
+      <CommandBar counts={counts} online={Boolean(city)} onPick={handleSearchPick} />
 
       <MapView
         city={city}
@@ -237,6 +250,13 @@ export default function App() {
         onSelectAsset={selectAsset}
         layers={layers}
       />
+
+      {running && (
+        <div className="run-stages" role="status">
+          <i />
+          {STAGES[stage]}
+        </div>
+      )}
 
       <div className="rail rail-left">
         {loadError && <div className="banner">Could not load city data: {loadError}</div>}
@@ -262,13 +282,13 @@ export default function App() {
         <LayerFilters layers={layers} setLayers={setLayers} />
       </div>
 
-      {/* The answer. It can be put away so the map takes the whole screen —
-          an incident commander switches between reading the assessment and
+      {/* The answer can be put away so the map takes the whole screen — an
+          incident commander switches between reading the assessment and
           looking at the ground. */}
       {result && !deckOpen && (
-        <button className="strip" style={{ '--band': `var(--${result.score.level})` }}
+        <button className="reopen" style={{ '--band': `var(--${band})` }}
                 onClick={() => setDeckOpen(true)}>
-          <b className="fig">{result.score.value}</b>
+          <b className="display">{result.score.value}</b>
           <span>{result.incidents[0].label} — {result.incidents[0].target.name}</span>
         </button>
       )}
@@ -276,60 +296,66 @@ export default function App() {
       {deckOpen && (
         <div className="rail rail-right">
           {result ? (
-            <>
-              <section className="deck">
-                <Verdict result={result} onCollapse={() => setDeckOpen(false)} />
-                <nav className="tabs" role="tablist">
-                  {TABS.map(([key, label]) => (
-                    <button
-                      key={key}
-                      role="tab"
-                      aria-selected={tab === key}
-                      className={`tab${tab === key ? ' tab-on' : ''}`}
-                      onClick={() => setTab(key)}
-                    >
-                      {label}
-                      {key === 'actions' && result.actions.length > 0 && (
-                        <span className="tab-count">{result.actions.length}</span>
-                      )}
-                      {key === 'cascade' && result.cascade.indirect_total > 0 && (
-                        <span className="tab-count">{result.cascade.indirect_total}</span>
-                      )}
-                    </button>
-                  ))}
-                </nav>
-                <div className="deck-body">
-                  {tab === 'impact' && (
-                    <>
-                      <ImpactDetail result={result} />
-                      <div className="block">
-                        <AffectedList result={result} onFocus={setFocus} />
-                      </div>
-                    </>
-                  )}
-                  {tab === 'cascade' && <CascadeDiagram cascade={result.cascade} onFocus={setFocus} />}
-                  {tab === 'compare' && (
-                    <ComparisonTable comparison={result.comparison} confidence={result.confidence} />
-                  )}
-                  {tab === 'actions' && <ActionList actions={result.actions} />}
-                  {tab === 'timeline' && <Timeline timeline={result.timeline} />}
-                </div>
-              </section>
-            </>
+            <section className="deck instrument">
+              <span className="ticks" />
+              <Verdict result={result} onCollapse={() => setDeckOpen(false)} onFocus={setFocus} />
+              <nav className="tabs" role="tablist">
+                {TABS.map(([key, label]) => (
+                  <button
+                    key={key}
+                    role="tab"
+                    aria-selected={tab === key}
+                    className={`tab${tab === key ? ' tab-on' : ''}`}
+                    onClick={() => setTab(key)}
+                  >
+                    {label}
+                    {key === 'actions' && result.actions.length > 0 && (
+                      <span className="tab-count">{result.actions.length}</span>
+                    )}
+                    {key === 'cascade' && result.cascade.indirect_total > 0 && (
+                      <span className="tab-count">{result.cascade.indirect_total}</span>
+                    )}
+                  </button>
+                ))}
+              </nav>
+              <div className="deck-body">
+                {tab === 'impact' && (
+                  <>
+                    <ImpactDetail result={result} />
+                    <div className="block">
+                      <AffectedList result={result} onFocus={setFocus} />
+                    </div>
+                  </>
+                )}
+                {tab === 'cascade' && (
+                  <CascadeDiagram cascade={result.cascade} result={result} onFocus={setFocus} />
+                )}
+                {tab === 'compare' && (
+                  <ComparisonTable comparison={result.comparison} confidence={result.confidence} />
+                )}
+                {tab === 'actions' && <ActionList actions={result.actions} />}
+                {tab === 'timeline' && <Timeline timeline={result.timeline} />}
+              </div>
+            </section>
           ) : (
-            <section className="deck start">
+            <section className="deck start instrument">
+              <span className="ticks" />
               <h2>Nothing simulated yet</h2>
-              <p>Results appear here: what is affected, why, what it does downstream, and
-                what to do first.</p>
+              <p>
+                What is affected, why, what follows downstream, and what to do first — all of it
+                appears here, traced to the data it came from.
+              </p>
               <ol>
-                <li><b>Find a place</b> in the search above, or click a road or asset on the map.</li>
-                <li><b>Say what happened</b> — only incidents that can happen to that thing are offered.</li>
-                <li><b>Run it.</b> Add a second incident first if you want their combined effect.</li>
+                <li><b>Find a place.</b> Search above, or click a road or asset on the map.</li>
+                <li><b>Say what happened.</b> Only incidents that can happen to that thing are offered.</li>
+                <li><b>Run it.</b> Add a second incident first to see their combined effect.</li>
               </ol>
             </section>
           )}
         </div>
       )}
+
+      <EventStrip result={result} onPick={() => { setTab('timeline'); setDeckOpen(true) }} />
     </div>
   )
 }

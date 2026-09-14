@@ -10,11 +10,13 @@ function change(row) {
   return `${sign}${Math.round(row.change * 10) / 10}${row.unit === '%' ? '%' : ''}`
 }
 
+/** Normal against now, on the same measures and from the same routing, so each
+ *  line is a difference rather than two separate opinions. */
 export default function ComparisonTable({ comparison, confidence }) {
   return (
     <>
-      <div className="block-head">
-        Normal conditions vs now
+      <div className="head">
+        <span className="cap">Normal conditions vs now</span>
         <b>{comparison.rows.length} measures</b>
       </div>
 
