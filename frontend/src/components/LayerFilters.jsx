@@ -1,16 +1,18 @@
 const LAYERS = [
-  ['roads', 'Road network'],
+  ['roads', 'Network'],
   ['facilities', 'Assets'],
   ['zone', 'Impact zone'],
-  ['cascade', 'Dependency links'],
-  ['evacuation', 'Evacuation routes'],
-  ['affectedOnly', 'Affected assets only'],
+  ['cascade', 'Dependencies'],
+  ['evacuation', 'Evacuation'],
+  ['graticule', 'Grid'],
+  ['affectedOnly', 'Affected only'],
 ]
 
 export default function LayerFilters({ layers, setLayers }) {
   return (
-    <section className="key">
-      <h2 className="panel-title">Map layers</h2>
+    <section className="panel instrument">
+      <span className="ticks" />
+      <div className="head"><span className="cap">Map layers</span></div>
       <div className="layers">
         {LAYERS.map(([key, label]) => (
           <label key={key} className="layer-toggle">
@@ -19,7 +21,8 @@ export default function LayerFilters({ layers, setLayers }) {
               checked={layers[key]}
               onChange={(e) => setLayers({ ...layers, [key]: e.target.checked })}
             />
-            {label}
+            <span className="layer-pip" />
+            <span>{label}</span>
           </label>
         ))}
       </div>

@@ -12,8 +12,12 @@ export default function HistoryPanel({ history, onReplay }) {
   if (!history.length) return null
 
   return (
-    <section className="panel">
-      <h2 className="panel-title">Previous runs<small>{history.length}</small></h2>
+    <section className="panel instrument">
+      <span className="ticks" />
+      <div className="head">
+        <span className="cap">Previous runs</span>
+        <b>{history.length}</b>
+      </div>
       <ul className="history">
         {history.map((entry) => (
           <li key={entry.id}>

@@ -19,7 +19,10 @@ export default function Timeline({ timeline }) {
 
   return (
     <>
-      <div className="block-head">How it unfolds<b>to {clock(span)}</b></div>
+      <div className="head">
+        <span className="cap">How it unfolds</span>
+        <b>to {clock(span)}</b>
+      </div>
       <ol className="timeline">
         {timeline.map((event, i) => {
           const level = LEVEL_IN_LABEL.exec(event.label)?.[1] ?? 'low'

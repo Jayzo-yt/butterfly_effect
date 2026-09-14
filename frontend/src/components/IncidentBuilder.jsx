@@ -34,8 +34,11 @@ export default function IncidentBuilder({
 
   if (!options) {
     return (
-      <section className="panel">
-        <h2 className="panel-title">Report an incident</h2>
+      <section className="panel instrument">
+        <span className="ticks" />
+        <div className="console-lead">
+          <h2>Scenario</h2>
+        </div>
         <p className="note">Loading the incident catalogue…</p>
       </section>
     )
@@ -43,16 +46,17 @@ export default function IncidentBuilder({
 
   const groups = [...new Set(usable.map((t) => t.group))]
 
-
   return (
-    <section className="panel">
-      <h2 className="panel-title">
-        Report an incident
-        <small>{queued.length ? `${queued.length} queued` : ''}</small>
-      </h2>
+    <section className="panel instrument">
+      <span className="ticks" />
+
+      <div className="console-lead">
+        <h2>Scenario</h2>
+        <p>{queued.length ? `${queued.length} queued` : 'Build a disruption'}</p>
+      </div>
 
       <div className="field">
-        <span>What is affected</span>
+        <span className="cap">Target</span>
         {target ? (
           <div className="picked">
             <strong>{target.name}</strong>
@@ -68,7 +72,7 @@ export default function IncidentBuilder({
       </div>
 
       <label className="field">
-        <span>What happened</span>
+        <span className="cap">Incident</span>
         <select
           value={chosen?.key ?? ''}
           onChange={(e) => setDraft({ ...draft, type: e.target.value, radius_m: null })}
@@ -86,7 +90,7 @@ export default function IncidentBuilder({
       </label>
 
       <label className="field">
-        <span>How bad</span>
+        <span className="cap">Severity</span>
         <select value={draft.severity} onChange={(e) => setDraft({ ...draft, severity: e.target.value })}>
           {options.severities.map((s) => (
             <option key={s} value={s}>
@@ -97,7 +101,7 @@ export default function IncidentBuilder({
       </label>
 
       <label className="field">
-        <span>Expected duration</span>
+        <span className="cap">Duration</span>
         <select
           value={draft.duration_hours}
           onChange={(e) => setDraft({ ...draft, duration_hours: Number(e.target.value) })}
@@ -109,34 +113,40 @@ export default function IncidentBuilder({
       </label>
 
       <label className="field">
-        <span>
-          Impact zone
-          <small>{draft.radius_m ? 'set manually' : 'calculated'}</small>
+        <span className="cap">
+          Impact area
+          <em>{draft.radius_m ? 'set manually' : 'auto'}</em>
         </span>
+        {!draft.radius_m && (
+          <div className="zone-readout">
+            <b className="display">{chosen?.base_radius_m ?? 800}</b>
+            <span>m base, scaled by severity and duration</span>
+          </div>
+        )}
         <input
           type="number"
           min="50"
           max="20000"
           step="100"
-          placeholder="Calculated automatically"
+          placeholder="Override in metres"
           value={draft.radius_m ?? ''}
           onChange={(e) => setDraft({
             ...draft,
             radius_m: e.target.value ? Number(e.target.value) : null,
           })}
         />
-        <small className="field-note">
-          Metres. Left blank, the engine scales this incident type's base radius
-          ({chosen?.base_radius_m ?? 800} m) by severity and duration.
-        </small>
       </label>
 
+      {/* Several incidents are one situation, so they are numbered as one
+          scenario rather than listed as separate jobs. */}
       {queued.length > 0 && (
         <ul className="queued">
           {queued.map((q, i) => (
-            <li key={i}>
+            <li key={i} data-level={q.severity === 'critical' ? 'critical'
+              : q.severity === 'high' ? 'high' : 'moderate'}>
+              <span className="queued-n">Incident {String(i + 1).padStart(2, '0')}</span>
               <span>{q._label}</span>
-              <em>{options.types.find((t) => t.key === q.type)?.label} · {q.severity}</em>
+              <em>{options.types.find((t) => t.key === q.type)?.label} · {q.severity} · {q.duration_hours} h</em>
               <button className="link-quiet" onClick={() => removeQueued(i)} aria-label="Remove">
                 remove
               </button>
@@ -147,18 +157,22 @@ export default function IncidentBuilder({
 
       {error && <div className="banner">{error}</div>}
 
-      <div className="actions">
+      <div className="acts">
         <button
           className="btn btn-primary"
           onClick={onRun}
           disabled={running || (!target && !queued.length)}
         >
-          {running ? 'Simulating…' : queued.length ? 'Run all incidents' : 'Run simulation'}
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
+            <path d="M6 4l14 8-14 8z" />
+          </svg>
+          {running ? 'Running' : queued.length ? 'Run all incidents' : 'Run simulation'}
         </button>
-        <button className="btn btn-quiet" onClick={onAdd} disabled={!target}>
+        <button className="btn" onClick={onAdd} disabled={!target}>
           Add another
         </button>
       </div>
+
       {queued.length > 0 && (
         <p className="note">
           Incidents run together on one network, so their effects combine rather than being

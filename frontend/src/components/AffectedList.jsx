@@ -65,7 +65,7 @@ export default function AffectedList({ result, onFocus }) {
                   <dt>Coordinates</dt>
                   <dd className="fig">{f.lat.toFixed(5)}, {f.lon.toFixed(5)}</dd>
                 </div>
-                <div><dt>Source</dt><dd>OpenStreetMap</dd></div>
+                <div><dt>Source</dt><dd>OpenStreetMap, measured</dd></div>
               </dl>
             </details>
           </div>
@@ -76,8 +76,8 @@ export default function AffectedList({ result, onFocus }) {
 
   return (
     <>
-      <div className="block-head">
-        {affected.length ? 'Affected facilities' : 'Facilities checked'}
+      <div className="head">
+        <span className="cap">{affected.length ? 'Affected facilities' : 'Facilities checked'}</span>
         <b>{affected.length} of {result.facilities.length}</b>
       </div>
 
