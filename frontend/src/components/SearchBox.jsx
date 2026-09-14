@@ -63,6 +63,7 @@ export default function SearchBox({ onPick }) {
                 <span className="search-name">{r.name}</span>
                 <span className="search-meta">
                   {r.type}{r.area ? `, ${r.area}` : ''}
+                  {r.supplies > 0 ? ` — supplies ${r.supplies} asset${r.supplies === 1 ? '' : 's'}` : ''}
                   <span>{r.kind === 'road' ? 'road' : r.kind === 'area' ? 'area' : 'asset'}</span>
                 </span>
               </button>
