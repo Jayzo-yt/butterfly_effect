@@ -79,7 +79,7 @@
   --s6: 24px;
 
   --bar-h: 54px;
-  --strip-h: 62px;
+  --strip-h: 72px;
   --rail-w: 288px;
   --deck-w: 388px;
 
@@ -290,20 +290,28 @@ button, input, select { font: inherit; color: inherit; }
 /* The right rail holds one instrument that fills it: verdict and tabs pinned,
    body scrolling. A flex child with non-visible overflow needs min-height:0 or
    it refuses to shrink and the scroll never engages. */
-.rail-right > .deck { display: flex; flex-direction: column; max-height: 100%; }
-.rail-right > .deck > .verdict,
-.rail-right > .deck > .tabs { flex: 0 0 auto; }
-.rail-right > .deck > .deck-body {
-  flex: 1 1 auto;
-  min-height: 0;
+.rail-right > .deck {
+  max-height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 var(--s4) var(--s5);
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
 }
-.deck-body::-webkit-scrollbar { width: 5px; }
-.deck-body::-webkit-scrollbar-thumb { background: var(--line); }
+.rail-right > .deck::-webkit-scrollbar { width: 5px; }
+.rail-right > .deck::-webkit-scrollbar-thumb { background: var(--line); }
+.rail-right > .deck > .deck-body { padding: 0 var(--s4) var(--s5); }
+
+/* The severity seam belongs to the rail, not to the block that happens to sit
+   at the top of it — otherwise it scrolls away with the verdict. */
+.rail-right { position: absolute; }
+.rail-right::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  z-index: 6;
+  background: var(--band, transparent);
+}
 
 /* A section of a rail. Divided from its neighbour by a rule, never by a gap. */
 .panel { padding: var(--s4); border-bottom: 1px solid var(--line-soft); }
@@ -565,16 +573,6 @@ button, input, select { font: inherit; color: inherit; }
   padding: var(--s4) var(--s4) var(--s3);
   border-bottom: 1px solid var(--line-soft);
 }
-/* The band is a seam across the whole rail, so the severity of the result
-   colours the instrument rather than decorating a box inside it. */
-.verdict::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: var(--band, var(--low));
-}
-
 .collapse {
   position: absolute;
   top: var(--s3); right: var(--s3);
@@ -720,8 +718,13 @@ button, input, select { font: inherit; color: inherit; }
 /* ---------- tabs ---------- */
 
 .tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   padding: 0 var(--s4);
+  background: var(--chassis);
+  border-top: 1px solid var(--line-soft);
   border-bottom: 1px solid var(--line);
   overflow-x: auto;
   scrollbar-width: none;
@@ -1052,7 +1055,7 @@ button, input, select { font: inherit; color: inherit; }
   gap: 3px;
   padding: 0 var(--s4);
   border-right: 1px solid var(--line);
-  min-width: 140px;
+  min-width: 132px;
 }
 .strip-lead .display { font-size: var(--t-md); }
 
@@ -1061,27 +1064,33 @@ button, input, select { font: inherit; color: inherit; }
   flex: 1 1 auto;
   display: flex;
   align-items: center;
-  padding: 0 var(--s4);
+  padding: var(--s2) var(--s4) 0;
   overflow-x: auto;
-  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
 }
-.strip-track::-webkit-scrollbar { display: none; }
+.strip-track::-webkit-scrollbar { height: 4px; }
+.strip-track::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
 .strip-track::before {
   content: '';
   position: absolute;
-  left: var(--s4); right: var(--s4); top: 50%;
+  left: var(--s4); right: var(--s4); top: 22px;
   height: 1px;
   background: var(--line);
 }
 .strip-event {
   position: relative;
   flex: 0 0 auto;
-  padding: 0 var(--s5) 0 0;
+  align-self: flex-start;
+  padding: 0 var(--s4) 0 0;
   background: none;
   border: 0;
   text-align: left;
   cursor: pointer;
-  min-width: 104px;
+  width: 118px;
   animation: settle 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .strip-dot {
@@ -1104,11 +1113,13 @@ button, input, select { font: inherit; color: inherit; }
   color: var(--faint);
 }
 .strip-label {
-  display: block;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   font-size: var(--t-xs);
   line-height: 1.3;
   color: var(--muted);
-  max-width: 148px;
   transition: color 120ms;
 }
 .strip-event:hover .strip-label { color: var(--text); }
