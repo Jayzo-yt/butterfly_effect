@@ -4,13 +4,27 @@
     {
       "name": "cascading-failure-api",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "uvicorn", "src.api.main:app", "--port", "8000"],
-      "port": 8000
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "src.api.main:app",
+        "--port",
+        "8000"
+      ],
+      "port": 8000,
+      "env": {
+        "CITY_DATA_PATH": "data/city/manipal.json"
+      }
     },
     {
       "name": "cascading-failure-frontend-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "frontend"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "frontend"
+      ],
       "port": 5173
     }
   ]

@@ -35,6 +35,8 @@ from ..analysis.scenario import IncidentRequest, ScenarioError, simulate
 from ..disruption.events import apply_event
 from ..disruption.propagation import run_propagation
 from ..graph import areas as areas_module
+from collections import Counter
+
 from ..graph import dependencies as dependencies_module
 from ..graph.builder import build_city
 from ..graph.infrastructure import CATEGORIES
@@ -338,13 +340,18 @@ def search(q: str = Query(..., min_length=2), limit: int = 12):
 
 
 def _build_search_index() -> List[dict]:
+    # Two substations in this extract carry the same name, and one feeds fifteen
+    # assets while the other feeds two. "Electrical substation, Udupi taluku"
+    # twice is not a choice an operator can make, so say what each one supplies.
+    supplies = Counter(link.source for link in _dependencies().links)
+
     entries = []
     for f in _facilities():
         row = _facility_row(f)
         entries.append({
             "kind": "asset", "id": row["id"], "name": row["name"],
             "type": row["category_label"], "group": row["group"],
-            "category": row["category"],
+            "category": row["category"], "supplies": supplies.get(row["id"], 0),
             "area": row["area"], "lat": row["lat"], "lon": row["lon"],
             "status": "As mapped — no live status feed for this asset",
             "_haystack": " ".join([row["name"], row["category_label"], row["group"],
