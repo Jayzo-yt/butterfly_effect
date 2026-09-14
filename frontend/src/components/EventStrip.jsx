@@ -19,8 +19,7 @@ export default function EventStrip({ result, onPick }) {
   const events = result?.timeline ?? []
 
   return (
-    <div className="strip-rail instrument">
-      <span className="ticks" />
+    <div className="strip-rail">
 
       <div className="strip-lead">
         <span className="cap">Event sequence</span>
@@ -40,6 +39,7 @@ export default function EventStrip({ result, onPick }) {
                 key={i}
                 className="strip-event"
                 data-level={level}
+                style={{ animationDelay: `${Math.min(i, 9) * 45}ms` }}
                 onClick={() => onPick?.()}
                 title={event.detail}
               >

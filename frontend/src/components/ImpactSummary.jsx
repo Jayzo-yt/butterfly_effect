@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { LEVEL_RANK, primaryConsequence } from '../consequence'
 
 const BAND_LABEL = {
@@ -25,14 +26,42 @@ function Figure({ value, label, level, note }) {
   )
 }
 
+/** Climb to the reading rather than snapping to it — the same 620 ms and the
+ *  same easing as the needle, so the figure and the pointer arrive together.
+ *  Honoured only when the viewer allows motion; otherwise the value is simply
+ *  correct from the first frame. */
+function useClimb(target, ms = 620) {
+  const still = typeof window !== 'undefined'
+    && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const [shown, setShown] = useState(still ? target : 0)
+  const frame = useRef(0)
+
+  useEffect(() => {
+    if (still) { setShown(target); return undefined }
+    const start = performance.now()
+    const from = 0
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / ms)
+      const eased = 1 - (1 - t) ** 3
+      setShown(Math.round(from + (target - from) * eased))
+      if (t < 1) frame.current = requestAnimationFrame(step)
+    }
+    frame.current = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(frame.current)
+  }, [target, ms, still])
+
+  return shown
+}
+
 function Dial({ score }) {
   const band = score.level === 'none' ? 'clear' : score.level
   const reached = LEVEL_RANK[score.level] ?? 0
+  const shown = useClimb(score.value)
 
   return (
     <div className="dial">
       <div className="dial-top">
-        <span className="dial-score display">{score.value}</span>
+        <span className="dial-score display">{shown}</span>
         <span className="dial-of">of 100</span>
         <span className="dial-band">{BAND_LABEL[score.level] ?? score.level}</span>
       </div>
@@ -50,7 +79,7 @@ function Dial({ score }) {
         </div>
         <span
           className="dial-needle"
-          style={{ left: `${score.value}%`, '--band': `var(--${band})` }}
+          style={{ left: `${shown}%`, '--band': `var(--${band})` }}
         />
         <div className="dial-ticks">
           {BANDS.map((b) => (
@@ -69,10 +98,9 @@ function Dial({ score }) {
  *  Four readings in the order an incident room asks for them. Everything else
  *  — the arithmetic, the responders, the evidence — sits behind the tabs. */
 export default function Verdict({ result, onCollapse, onFocus }) {
-  const { incidents, score, areas, actions } = result
+  const { incidents, score, areas } = result
   const band = score.level === 'none' ? 'clear' : score.level
   const lead = incidents[0]
-  const first = actions[0]
   const consequence = primaryConsequence(result)
 
   return (
@@ -104,9 +132,9 @@ export default function Verdict({ result, onCollapse, onFocus }) {
         </span>
         {consequence.lat != null ? (
           <button
-            className="link-quiet"
-            style={{ display: 'block', margin: 0, textAlign: 'left', color: 'inherit' }}
+            className="consequence-link"
             onClick={() => onFocus?.([consequence.lat, consequence.lon])}
+            title="Show on the map"
           >
             <strong>{consequence.name}</strong>
           </button>
@@ -117,13 +145,6 @@ export default function Verdict({ result, onCollapse, onFocus }) {
         <p>{consequence.note}</p>
       </div>
 
-      {first && (
-        <div className="verdict-next">
-          <div className="head"><span className="cap">Do this now</span></div>
-          <p>{first.text}</p>
-          <p className="provenance">{first.basis}</p>
-        </div>
-      )}
     </div>
   )
 }
@@ -134,11 +155,20 @@ export default function Verdict({ result, onCollapse, onFocus }) {
 export function ImpactDetail({ result }) {
   const {
     summary, direct, network, population, emergency,
-    evacuation, alternatives, confidence, cascade, score,
+    evacuation, alternatives, confidence, cascade, score, actions,
   } = result
+  const first = actions[0]
 
   return (
     <>
+      {first && (
+        <div className="verdict-next">
+          <div className="head"><span className="cap">Do this now</span></div>
+          <p>{first.text}</p>
+          <p className="provenance">{first.basis}</p>
+        </div>
+      )}
+
       {direct.map((d) => (
         <div key={d.id} className="direct" data-level={d.function_lost_pct >= 90 ? 'critical' : 'high'}>
           <div className="direct-head">

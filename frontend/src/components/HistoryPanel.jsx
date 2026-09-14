@@ -12,8 +12,7 @@ export default function HistoryPanel({ history, onReplay }) {
   if (!history.length) return null
 
   return (
-    <section className="panel instrument">
-      <span className="ticks" />
+    <section className="panel">
       <div className="head">
         <span className="cap">Previous runs</span>
         <b>{history.length}</b>

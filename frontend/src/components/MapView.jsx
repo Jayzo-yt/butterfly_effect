@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Circle, CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap, ZoomControl,
 } from 'react-leaflet'
-import { COLORS, NETWORK_COLOR } from '../theme'
+import { COLORS, NETWORK_COLOR, roadStyle } from '../theme'
 import { pathFor } from '../glyphs'
 
 /** Leaflet measures its container when the map is created; a map created into
@@ -27,6 +27,10 @@ function FlyTo({ focus }) {
   }, [focus, map])
   return null
 }
+
+// An unaffected asset is context, not a finding: it takes the same grey the
+// road network sits in rather than a colour of its own.
+const ASSET_QUIET = '#55709a'
 
 const LEVEL_COLOR = {
   critical: COLORS.critical,
@@ -180,14 +184,19 @@ export default function MapView({
                      || hitSegments.has(`${e.target}|${e.source}`)
             const isIncident = incidentEdges.has(`${e.source}-${e.target}`)
                             || incidentEdges.has(`${e.target}-${e.source}`)
+            // A trunk road and a service lane are not the same object. Weight
+            // and value follow the class, so the arterial structure of the
+            // town is what you see first.
+            const road = roadStyle(e.road_class)
             return (
               <Polyline
                 key={`r${i}`}
                 positions={[pos[e.source], pos[e.target]]}
                 pathOptions={{
-                  color: isIncident ? COLORS.critical : hit ? COLORS.high : COLORS.edge,
-                  weight: isIncident ? 6 : hit ? 3 : 1.3,
-                  opacity: isIncident ? 1 : hit ? 0.9 : result ? 0.2 : 0.42,
+                  color: isIncident ? COLORS.critical : hit ? COLORS.high : road.c,
+                  weight: isIncident ? Math.max(5, road.w * 2.6)
+                    : hit ? Math.max(2.4, road.w * 1.8) : road.w,
+                  opacity: isIncident ? 1 : hit ? 0.92 : road.o * (result ? 0.45 : 1),
                 }}
                 eventHandlers={{ click: () => onSelectRoad(e.source, e.target) }}
               >
@@ -252,7 +261,7 @@ export default function MapView({
               <Marker
                 key={f.id}
                 position={[f.lat, f.lon]}
-                icon={facilityIcon(f.category, LEVEL_COLOR[level] ?? COLORS.edge, affected,
+                icon={facilityIcon(f.category, LEVEL_COLOR[level] ?? ASSET_QUIET, affected,
                                    Boolean(result) && !affected)}
                 zIndexOffset={affected ? 500 : 0}
                 eventHandlers={{ click: () => onSelectAsset(f) }}

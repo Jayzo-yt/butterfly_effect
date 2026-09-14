@@ -26,7 +26,7 @@ const HISTORY_KEY = 'incident-history-v1'
 const TABS = [
   ['impact', 'Impact'],
   ['cascade', 'Cascade'],
-  ['compare', 'vs normal'],
+  ['compare', 'Baseline'],
   ['actions', 'Actions'],
   ['timeline', 'Timeline'],
 ]
@@ -235,7 +235,7 @@ export default function App() {
   const band = result && (result.score.level === 'none' ? 'clear' : result.score.level)
 
   return (
-    <div className="layout">
+    <div className="layout" data-deck={deckOpen ? 'open' : 'closed'}>
       <CommandBar counts={counts} online={Boolean(city)} onPick={handleSearchPick} />
 
       <MapView
@@ -250,6 +250,10 @@ export default function App() {
         onSelectAsset={selectAsset}
         layers={layers}
       />
+
+      {/* The frame the city is seen through: a hairline, a vignette that seats
+          it below the chassis, and four registration marks. */}
+      <div className="aperture" aria-hidden="true"><i /><i /><i /><i /></div>
 
       {running && (
         <div className="run-stages" role="status">
@@ -296,8 +300,7 @@ export default function App() {
       {deckOpen && (
         <div className="rail rail-right">
           {result ? (
-            <section className="deck instrument">
-              <span className="ticks" />
+            <section className="deck" key={result.scenario_id}>
               <Verdict result={result} onCollapse={() => setDeckOpen(false)} onFocus={setFocus} />
               <nav className="tabs" role="tablist">
                 {TABS.map(([key, label]) => (
@@ -318,7 +321,7 @@ export default function App() {
                   </button>
                 ))}
               </nav>
-              <div className="deck-body">
+              <div className="deck-body settle">
                 {tab === 'impact' && (
                   <>
                     <ImpactDetail result={result} />
@@ -338,8 +341,7 @@ export default function App() {
               </div>
             </section>
           ) : (
-            <section className="deck start instrument">
-              <span className="ticks" />
+            <section className="deck start">
               <h2>Nothing simulated yet</h2>
               <p>
                 What is affected, why, what follows downstream, and what to do first — all of it

@@ -34,9 +34,8 @@ export default function IncidentBuilder({
 
   if (!options) {
     return (
-      <section className="panel instrument">
-        <span className="ticks" />
-        <div className="console-lead">
+      <section className="panel">
+          <div className="console-lead">
           <h2>Scenario</h2>
         </div>
         <p className="note">Loading the incident catalogue…</p>
@@ -47,8 +46,7 @@ export default function IncidentBuilder({
   const groups = [...new Set(usable.map((t) => t.group))]
 
   return (
-    <section className="panel instrument">
-      <span className="ticks" />
+    <section className="panel">
 
       <div className="console-lead">
         <h2>Scenario</h2>
