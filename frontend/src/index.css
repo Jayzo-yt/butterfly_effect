@@ -11,15 +11,19 @@
 /* ===========================================================================
    CITY // DISRUPTION — operations console
    ---------------------------------------------------------------------------
-   The map is the world. Everything else is an instrument laid over it.
+   One chassis with a window cut in it. The rails are not panels floating over
+   a map; they are the body of the instrument, and the map is the aperture
+   between them. Nothing has a gap to the viewport edge, nothing casts a
+   shadow onto the world, and the only registration marks in the interface sit
+   at the four corners of that aperture — a sighting frame on the city, which
+   is what a digital twin is.
 
-   Three rules hold the whole thing together:
+   Three rules hold the rest together:
 
    1. SEVERITY is the only loud colour. Red, orange, amber, green mean a
       finding. The indigo accent means "you can touch this" and nothing else.
-   2. Panels are not cards. They have no border — they are marked at the
-      corners, the way a survey instrument or a viewfinder marks its frame.
-      Nothing gets a drop shadow except the things that genuinely float.
+   2. Every size comes from one type scale and every gap from one 4px ladder.
+      No value is invented at the call site.
    3. Figures are monospaced and tabular; the display face is condensed and
       reserved for readings. Labels stay in the text face — a mono label is
       costume, not information.
@@ -29,20 +33,20 @@
   /* Chassis. Cool near-black, blue-biased, so the amber and red of the
      severity ramp stay warm against it. */
   --void: #05070c;
-  --chassis: #0a0e16;
-  --panel: rgba(10, 14, 22, 0.88);
+  --chassis: #090d14;
+  --sunk: #0d121c;
   --raised: #121826;
-  --line: #1d2636;
-  --line-soft: #151c2a;
+  --line: #1b2432;
+  --line-soft: #141b27;
 
-  --text: #e4e9f2;
-  --muted: #8792a8;
-  --faint: #58637a;
+  --text: #e6eaf2;
+  --muted: #8a94a8;
+  --faint: #59647a;
 
   /* Interactive only. */
   --action: #5b7cff;
   --action-lift: #8098ff;
-  --action-wash: rgba(91, 124, 255, 0.12);
+  --action-wash: rgba(91, 124, 255, 0.11);
 
   /* The signal. Five steps, used everywhere a level appears. */
   --critical: #ff5f52;
@@ -56,23 +60,28 @@
   --n-water: #4aa8d8;
   --n-telecom: #9b8cff;
 
-  --float: 0 18px 48px rgba(0, 0, 0, 0.55);
-
-  /* One scale. Everything picks from here. */
-  --t-2xs: 10px;
+  /* Type: eight steps, each clearly apart from the next. */
+  --t-cap: 10px;
   --t-xs: 11px;
-  --t-sm: 12px;
-  --t-md: 13px;
-  --t-lg: 15px;
-  --t-xl: 19px;
-  --t-2xl: 26px;
-  --t-3xl: 40px;
-  --t-4xl: 54px;
+  --t-sm: 13px;
+  --t-md: 15px;
+  --t-lg: 18px;
+  --t-xl: 22px;
+  --t-2xl: 30px;
+  --t-3xl: 52px;
 
-  --bar-h: 56px;
-  --strip-h: 64px;
-  --rail-w: 296px;
-  --deck-w: 400px;
+  /* Space: one ladder, 4px rungs. Nothing off it. */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+
+  --bar-h: 54px;
+  --strip-h: 62px;
+  --rail-w: 288px;
+  --deck-w: 388px;
 
   color-scheme: dark;
 }
@@ -85,9 +94,10 @@ html, body, #root {
   background: var(--void);
   color: var(--text);
   font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
-  font-size: var(--t-md);
-  line-height: 1.55;
+  font-size: var(--t-sm);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 /* Readings. Condensed, tight, tabular — a gauge face, not a headline. */
@@ -95,7 +105,7 @@ html, body, #root {
   font-family: 'IBM Plex Sans Condensed', 'IBM Plex Sans', sans-serif;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.018em;
   line-height: 1;
 }
 
@@ -103,14 +113,15 @@ html, body, #root {
 .fig {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
+  font-size: 0.94em;
 }
 
-/* A label on an instrument: small, spaced, quiet. Used for the field names of
-   the console and the panel heads — never for running text. */
+/* An engraved label. Section heads and field names only — never running text,
+   and never twice inside one block. */
 .cap {
-  font-size: var(--t-2xs);
+  font-size: var(--t-cap);
   font-weight: 500;
-  letter-spacing: 0.13em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--faint);
 }
@@ -138,97 +149,53 @@ button, input, select { font: inherit; color: inherit; }
 .lv-low      { color: var(--low); }
 .lv-none     { color: var(--clear); }
 
-/* ---------- the instrument primitive ----------
-   No border. Four corner registration marks and a translucent ground. This is
-   the identity of the interface: a frame you sight through, not a card. */
-
-.instrument {
-  position: relative;
-  background: var(--panel);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-radius: 2px;
-}
-
-.instrument::before,
-.instrument::after {
-  content: '';
-  position: absolute;
-  width: 11px;
-  height: 11px;
-  pointer-events: none;
-  border-color: var(--line);
-  border-style: solid;
-}
-.instrument::before {
-  top: 0; left: 0;
-  border-width: 1px 0 0 1px;
-}
-.instrument::after {
-  bottom: 0; right: 0;
-  border-width: 0 1px 1px 0;
-}
-
-/* The other two corners, on an inner element so the pseudo budget holds. */
-.instrument > .ticks { position: absolute; inset: 0; pointer-events: none; }
-.instrument > .ticks::before,
-.instrument > .ticks::after {
-  content: '';
-  position: absolute;
-  width: 11px;
-  height: 11px;
-  border-color: var(--line);
-  border-style: solid;
-}
-.instrument > .ticks::before {
-  top: 0; right: 0;
-  border-width: 1px 1px 0 0;
-}
-.instrument > .ticks::after {
-  bottom: 0; left: 0;
-  border-width: 0 0 1px 1px;
-}
-
-/* A head rule: the label, then a hairline running to the edge. An axis, not a
-   heading underline. */
-.head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 0 8px;
-}
-.head > .cap { flex: 0 0 auto; }
-.head::after {
-  content: '';
-  flex: 1 1 auto;
-  height: 1px;
-  background: var(--line);
-}
-.head > b {
-  flex: 0 0 auto;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--t-2xs);
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  order: 3;
-}
-
-/* ---------- shell ---------- */
+/* ---------- shell ----------
+   Bar across the top; rails flush to the left and right edges; the map is what
+   is left. No margins, no floating, no shadows falling on the world. */
 
 .layout {
   position: relative;
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background: var(--void);
+  background: var(--chassis);
 }
 
 .map {
   position: absolute;
-  inset: var(--bar-h) 0 0 0;
-  width: 100%;
+  top: var(--bar-h);
+  left: var(--rail-w);
+  right: var(--deck-w);
+  bottom: var(--strip-h);
+  background: var(--void);
 }
+.layout[data-deck='closed'] .map { right: 0; }
+
+/* The aperture frame: a hairline, a vignette that seats the city below the
+   chassis, and the four registration marks. The only ones in the interface. */
+.aperture {
+  position: absolute;
+  top: var(--bar-h);
+  left: var(--rail-w);
+  right: var(--deck-w);
+  bottom: var(--strip-h);
+  z-index: 700;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px var(--line), inset 0 0 48px rgba(0, 0, 0, 0.42);
+}
+.layout[data-deck='closed'] .aperture { right: 0; }
+
+.aperture i {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border: 0 solid var(--action);
+  opacity: 0.55;
+}
+.aperture i:nth-child(1) { top: 0; left: 0; border-width: 1px 0 0 1px; }
+.aperture i:nth-child(2) { top: 0; right: 0; border-width: 1px 1px 0 0; }
+.aperture i:nth-child(3) { bottom: 0; right: 0; border-width: 0 1px 1px 0; }
+.aperture i:nth-child(4) { bottom: 0; left: 0; border-width: 0 0 1px 1px; }
 
 /* ---------- command bar ---------- */
 
@@ -239,7 +206,7 @@ button, input, select { font: inherit; color: inherit; }
   z-index: 900;
   display: flex;
   align-items: stretch;
-  background: linear-gradient(180deg, #0c111b, #080c14);
+  background: var(--chassis);
   border-bottom: 1px solid var(--line);
 }
 
@@ -247,103 +214,125 @@ button, input, select { font: inherit; color: inherit; }
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0 18px;
+  gap: 2px;
+  width: var(--rail-w);
+  flex: 0 0 auto;
+  padding: 0 var(--s4);
   border-right: 1px solid var(--line);
-  min-width: 212px;
 }
 .mark b {
   font-family: 'IBM Plex Sans Condensed', sans-serif;
-  font-size: var(--t-lg);
+  font-size: var(--t-md);
   font-weight: 600;
-  letter-spacing: 0.04em;
-  line-height: 1.1;
+  letter-spacing: 0.06em;
+  line-height: 1;
 }
 .mark b i { font-style: normal; color: var(--action); }
 .mark span {
-  font-size: var(--t-2xs);
-  letter-spacing: 0.15em;
+  font-size: var(--t-cap);
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--faint);
-  line-height: 1.3;
+  line-height: 1;
 }
 
-.bar-search { flex: 1 1 auto; display: flex; align-items: center; padding: 0 18px; }
+.bar-search { flex: 1 1 auto; display: flex; align-items: center; padding: 0 var(--s4); }
 
-.bar-readout {
-  display: flex;
-  align-items: stretch;
-  border-left: 1px solid var(--line);
-}
+.bar-readout { display: flex; align-items: stretch; }
 .bar-readout > div {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0 18px;
-  border-right: 1px solid var(--line-soft);
+  gap: 3px;
+  padding: 0 var(--s4);
+  border-left: 1px solid var(--line);
 }
-.bar-readout > div:last-child { border-right: 0; }
-.bar-readout .display { font-size: var(--t-xl); }
-.bar-readout .cap { margin-top: 2px; }
+.bar-readout .display { font-size: var(--t-lg); }
 
-.status { display: flex; align-items: center; gap: 7px; }
+.status { display: flex; align-items: center; gap: var(--s2); }
 .status i {
-  width: 6px; height: 6px; border-radius: 50%;
+  width: 5px; height: 5px; border-radius: 50%;
   background: var(--clear);
-  box-shadow: 0 0 0 3px rgba(60, 197, 131, 0.16);
+  box-shadow: 0 0 0 3px rgba(60, 197, 131, 0.14);
 }
-.status.status-off i { background: var(--critical); box-shadow: 0 0 0 3px rgba(255, 95, 82, 0.16); }
+.status.status-off i { background: var(--moderate); box-shadow: 0 0 0 3px rgba(232, 180, 60, 0.14); }
 .status span {
-  font-size: var(--t-2xs);
-  letter-spacing: 0.13em;
+  font-size: var(--t-cap);
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
-/* ---------- rails ---------- */
+/* ---------- rails ----------
+   Part of the chassis, not objects on top of it. Flush to the edge, hairline
+   against the aperture, sections divided by rules rather than by gaps. */
 
 .rail {
   position: absolute;
-  top: calc(var(--bar-h) + 12px);
-  bottom: calc(var(--strip-h) + 12px);
+  top: var(--bar-h);
+  bottom: 0;
   z-index: 800;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  background: var(--chassis);
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
 }
 .rail > * { flex: 0 0 auto; }
-.rail::-webkit-scrollbar { width: 6px; }
-.rail::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+.rail::-webkit-scrollbar { width: 5px; }
+.rail::-webkit-scrollbar-thumb { background: var(--line); }
 
-.rail-left { left: 12px; width: var(--rail-w); }
-.rail-right { right: 12px; width: var(--deck-w); overflow: hidden; }
+.rail-left { left: 0; width: var(--rail-w); border-right: 1px solid var(--line); }
+.rail-right { right: 0; width: var(--deck-w); border-left: 1px solid var(--line); overflow: hidden; }
 
 /* The right rail holds one instrument that fills it: verdict and tabs pinned,
    body scrolling. A flex child with non-visible overflow needs min-height:0 or
    it refuses to shrink and the scroll never engages. */
-.rail-right > .deck {
-  display: flex;
-  flex-direction: column;
-  max-height: 100%;
-  box-shadow: var(--float);
-}
+.rail-right > .deck { display: flex; flex-direction: column; max-height: 100%; }
+.rail-right > .deck > .verdict,
+.rail-right > .deck > .tabs { flex: 0 0 auto; }
 .rail-right > .deck > .deck-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 16px 16px;
+  padding: 0 var(--s4) var(--s5);
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
 }
-.deck-body::-webkit-scrollbar { width: 6px; }
-.deck-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+.deck-body::-webkit-scrollbar { width: 5px; }
+.deck-body::-webkit-scrollbar-thumb { background: var(--line); }
 
-.panel { padding: 14px 16px 16px; }
-.panel .head { margin-bottom: 2px; }
+/* A section of a rail. Divided from its neighbour by a rule, never by a gap. */
+.panel { padding: var(--s4); border-bottom: 1px solid var(--line-soft); }
+.rail > .panel:last-child { border-bottom: 0; }
+
+/* A head rule: the label, then a hairline running to the edge. An axis, not a
+   heading underline. */
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 0 0 var(--s2);
+}
+.head > .cap { flex: 0 0 auto; }
+.head::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--line);
+}
+.head > b {
+  flex: 0 0 auto;
+  order: 3;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--t-cap);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
 
 /* ---------- scenario console ---------- */
 
@@ -351,8 +340,8 @@ button, input, select { font: inherit; color: inherit; }
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
-  margin: 0 0 12px;
+  gap: var(--s2);
+  margin: 0 0 var(--s4);
 }
 .console-lead h2 {
   margin: 0;
@@ -360,50 +349,52 @@ button, input, select { font: inherit; color: inherit; }
   font-size: var(--t-xl);
   font-weight: 600;
   letter-spacing: 0.01em;
+  line-height: 1;
 }
 .console-lead p { margin: 0; font-size: var(--t-xs); color: var(--faint); }
 
-.field { display: block; margin-bottom: 11px; }
-.field > .cap { display: flex; justify-content: space-between; margin-bottom: 5px; }
-.field > .cap em { font-style: normal; color: var(--action); letter-spacing: 0.06em; }
+.field { display: block; margin-bottom: var(--s3); }
+.field > .cap { display: flex; justify-content: space-between; margin-bottom: var(--s1); }
+.field > .cap em { font-style: normal; color: var(--action); letter-spacing: 0.08em; }
 
 /* Controls: a hairline box with an inner top highlight, so it reads as milled
    rather than drawn. */
 .field select,
 .field input {
   width: 100%;
-  padding: 8px 10px;
-  background: #0d121c;
+  padding: var(--s2) 10px;
+  background: var(--sunk);
   color: var(--text);
   border: 1px solid var(--line);
   border-radius: 2px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   font-size: var(--t-sm);
   appearance: none;
+  transition: border-color 120ms;
 }
 .field select {
   background-image:
     linear-gradient(45deg, transparent 50%, var(--muted) 50%),
     linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-  background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%;
+  background-position: calc(100% - 15px) 53%, calc(100% - 10px) 53%;
   background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
   padding-right: 28px;
 }
 .field select:hover:enabled,
-.field input:hover { border-color: #2a374c; }
-.field select:disabled { opacity: 0.45; }
+.field input:hover { border-color: #283549; }
+.field select:disabled { opacity: 0.42; }
 .field-note {
   display: block;
-  margin-top: 5px;
+  margin-top: var(--s1);
   font-size: var(--t-xs);
   color: var(--faint);
   line-height: 1.45;
 }
 
 .picked {
-  padding: 9px 11px;
-  background: #0d121c;
+  padding: 9px 10px;
+  background: var(--sunk);
   border: 1px solid var(--line);
   border-left: 2px solid var(--action);
   border-radius: 2px;
@@ -416,15 +407,10 @@ button, input, select { font: inherit; color: inherit; }
   color: var(--muted);
   margin-top: 1px;
 }
-.picked-empty {
-  margin: 0;
-  color: var(--faint);
-  font-size: var(--t-xs);
-  border-left-color: var(--line);
-}
+.picked-empty { margin: 0; color: var(--faint); font-size: var(--t-xs); border-left-color: var(--line); }
 
 .link-quiet {
-  margin-top: 6px;
+  margin-top: var(--s1);
   padding: 0;
   background: none;
   border: 0;
@@ -434,90 +420,90 @@ button, input, select { font: inherit; color: inherit; }
 }
 .link-quiet:hover { color: var(--action-lift); }
 
-/* Impact-zone readout: the calculated radius shown as a value, not just a
-   blank box that happens to have a placeholder. */
 .zone-readout {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  padding: 7px 11px;
-  background: #0d121c;
+  gap: var(--s2);
+  padding: 7px 10px;
+  background: var(--sunk);
   border: 1px solid var(--line);
   border-radius: 2px;
-  margin-bottom: 5px;
+  margin-bottom: var(--s1);
 }
-.zone-readout .display { font-size: var(--t-xl); }
-.zone-readout span { font-size: var(--t-xs); color: var(--faint); }
+.zone-readout .display { font-size: var(--t-lg); }
+.zone-readout span { font-size: var(--t-xs); color: var(--faint); line-height: 1.35; }
 
-.queued { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 5px; }
+.queued { list-style: none; margin: var(--s1) 0 0; padding: 0; display: grid; gap: var(--s1); }
 .queued li {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px 8px;
+  gap: 2px var(--s2);
   padding: 7px 10px;
-  background: #0d121c;
+  background: var(--sunk);
   border-radius: 2px;
   font-size: var(--t-xs);
 }
-.queued li[data-level] { border-left-width: 2px; border-left-style: solid; }
 .queued .queued-n {
   grid-column: 1 / -1;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--t-2xs);
-  letter-spacing: 0.1em;
+  font-size: var(--t-cap);
+  letter-spacing: 0.12em;
   color: var(--faint);
 }
 .queued li > span { font-weight: 500; }
 .queued li > em { grid-column: 1; font-style: normal; color: var(--muted); }
-.queued li > button { grid-row: 2; grid-column: 2; }
+.queued li > button { grid-row: 3; grid-column: 2; }
 
-.acts { display: flex; gap: 7px; margin-top: 13px; }
+/* Two flex buttons of equal share both wrapped their labels at this rail width.
+   The secondary takes only what it needs; the primary takes the rest. */
+.acts { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s1); margin-top: var(--s4); }
 
 .btn {
-  padding: 9px 14px;
+  padding: 9px var(--s3);
+  white-space: nowrap;
   border-radius: 2px;
   border: 1px solid var(--line);
-  background: #0f1523;
+  background: var(--raised);
   color: var(--text);
   font-size: var(--t-sm);
   font-weight: 500;
   cursor: pointer;
+  transition: border-color 120ms, background 120ms;
 }
 .btn:hover:enabled { border-color: #2c3a52; }
-.btn:disabled { opacity: 0.4; cursor: default; }
+.btn:disabled { opacity: 0.38; cursor: default; }
 
 .btn-primary {
-  flex: 1 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
+  gap: var(--s2);
   background: var(--action);
   border-color: var(--action);
-  color: #060a14;
+  color: #050810;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 .btn-primary:hover:enabled { background: var(--action-lift); border-color: var(--action-lift); }
-.btn-primary svg { flex: 0 0 auto; }
+.btn-primary:disabled { background: var(--raised); border-color: var(--line); color: var(--text); }
 
 /* ---------- search ---------- */
 
-.search { position: relative; width: 100%; max-width: 480px; }
+.search { position: relative; width: 100%; max-width: 460px; }
 .search input {
   width: 100%;
-  padding: 8px 12px 8px 32px;
-  background: #0d121c;
+  padding: 7px var(--s3) 7px 30px;
+  background: var(--sunk);
   border: 1px solid var(--line);
   border-radius: 2px;
   color: var(--text);
   font-size: var(--t-sm);
 }
-.search input::placeholder { color: var(--faint); letter-spacing: 0.05em; }
+.search input::placeholder { color: var(--faint); letter-spacing: 0.04em; }
 .search input:focus { border-color: #2c3a52; outline: none; }
 .search-glass {
   position: absolute;
-  left: 11px; top: 50%;
+  left: 10px; top: 50%;
   transform: translateY(-50%);
   color: var(--faint);
   pointer-events: none;
@@ -525,26 +511,26 @@ button, input, select { font: inherit; color: inherit; }
 
 .search-results {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 5px);
   left: 0; right: 0;
   z-index: 40;
   margin: 0;
-  padding: 4px;
+  padding: var(--s1);
   list-style: none;
-  background: #0b1018;
+  background: #0a0f18;
   border: 1px solid var(--line);
   border-radius: 2px;
-  box-shadow: var(--float);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.6);
   max-height: 60vh;
   overflow-y: auto;
 }
 .search-results button {
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) auto;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 2px 10px;
+  gap: 1px var(--s2);
   width: 100%;
-  padding: 7px 8px;
+  padding: 6px 7px;
   background: none;
   border: 0;
   border-radius: 2px;
@@ -556,7 +542,7 @@ button, input, select { font: inherit; color: inherit; }
   grid-row: 1 / 3;
   display: grid;
   place-items: center;
-  width: 26px; height: 26px;
+  width: 24px; height: 24px;
   border: 1px solid var(--line);
   border-radius: 2px;
   color: var(--muted);
@@ -564,25 +550,34 @@ button, input, select { font: inherit; color: inherit; }
 .search-name { font-size: var(--t-sm); font-weight: 500; }
 .search-kind {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--t-2xs);
-  letter-spacing: 0.1em;
+  font-size: var(--t-cap);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--faint);
 }
 .search-meta { grid-column: 2 / -1; font-size: var(--t-xs); color: var(--muted); }
-.search-empty { margin: 0; padding: 12px; font-size: var(--t-xs); color: var(--muted); }
+.search-empty { margin: 0; padding: var(--s3); font-size: var(--t-xs); color: var(--muted); }
 
 /* ---------- verdict ---------- */
 
 .verdict {
   position: relative;
-  padding: 14px 16px 12px;
-  border-top: 2px solid var(--band, var(--low));
+  padding: var(--s4) var(--s4) var(--s3);
+  border-bottom: 1px solid var(--line-soft);
+}
+/* The band is a seam across the whole rail, so the severity of the result
+   colours the instrument rather than decorating a box inside it. */
+.verdict::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--band, var(--low));
 }
 
 .collapse {
   position: absolute;
-  top: 10px; right: 10px;
+  top: var(--s3); right: var(--s3);
   width: 22px; height: 22px;
   display: grid;
   place-items: center;
@@ -597,153 +592,182 @@ button, input, select { font: inherit; color: inherit; }
 .verdict-what { padding-right: 28px; }
 .verdict-kind {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--t-2xs);
-  letter-spacing: 0.14em;
+  font-size: var(--t-cap);
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--faint);
 }
 .verdict-where {
-  margin: 3px 0 0;
+  margin: var(--s1) 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   font-family: 'IBM Plex Sans Condensed', sans-serif;
   font-size: var(--t-2xl);
   font-weight: 600;
-  line-height: 1.12;
-  letter-spacing: 0.005em;
+  line-height: 1.05;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
 }
-.verdict-target { margin: 3px 0 0; font-size: var(--t-sm); color: var(--muted); }
+.verdict-target { margin: var(--s1) 0 0; font-size: var(--t-sm); color: var(--muted); }
 .verdict-meta {
-  margin: 7px 0 0;
+  margin: 6px 0 0;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--t-2xs);
-  letter-spacing: 0.06em;
+  font-size: var(--t-cap);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--faint);
 }
 
-/* The reading: score, band, and the scale it sits on. The engine's bands have
-   real cut-offs (15 / 35 / 60), so the dial shows them — that is what turns a
-   number into a measurement. */
-.dial { margin-top: 14px; }
-.dial-top { display: flex; align-items: flex-end; gap: 11px; }
-.dial-score { font-size: var(--t-4xl); color: var(--band, var(--text)); }
+/* The reading. The engine's bands have real cut-offs (15 / 35 / 60), so the
+   dial shows them: that is what turns a number into a measurement. */
+.dial { margin-top: var(--s4); }
+.dial-top { display: flex; align-items: flex-end; gap: 10px; }
+.dial-score { font-size: var(--t-3xl); color: var(--band, var(--text)); }
 .dial-of {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--t-2xs);
-  letter-spacing: 0.1em;
+  font-size: var(--t-cap);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--faint);
-  padding-bottom: 8px;
+  padding-bottom: 7px;
 }
 .dial-band {
   margin-left: auto;
-  padding-bottom: 7px;
+  padding-bottom: 6px;
   font-family: 'IBM Plex Sans Condensed', sans-serif;
-  font-size: var(--t-lg);
+  font-size: var(--t-md);
   font-weight: 600;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--band, var(--text));
 }
 
-.dial-scale { position: relative; margin-top: 10px; height: 20px; }
-.dial-track {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  display: flex;
-  gap: 1px;
-}
-.dial-seg { height: 3px; background: var(--line); }
+.dial-scale { position: relative; margin-top: var(--s3); height: 19px; }
+.dial-track { position: absolute; top: 0; left: 0; right: 0; height: 2px; display: flex; gap: 1px; }
+.dial-seg { height: 2px; background: var(--line); transition: background 420ms ease 160ms; }
 .dial-seg[data-on='true'] { background: currentColor; }
 .dial-needle {
   position: absolute;
-  top: -3px;
-  width: 2px;
-  height: 9px;
+  top: -4px;
+  width: 1px;
+  height: 10px;
   background: var(--band, var(--text));
-  transform: translateX(-1px);
-  transition: left 480ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: left 680ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dial-needle::after {
+  content: '';
+  position: absolute;
+  top: -3px; left: -2px;
+  width: 5px; height: 5px;
+  background: var(--band, var(--text));
 }
 .dial-ticks {
   position: absolute;
-  top: 8px; left: 0; right: 0;
+  top: var(--s2); left: 0; right: 0;
   display: flex;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 9px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--faint);
 }
 
-/* Primary consequence: the one sentence the panel exists to deliver. */
+/* The one sentence the panel exists to deliver. */
 .consequence {
-  margin-top: 14px;
-  padding: 11px 12px;
-  background: #0d121c;
+  margin-top: var(--s4);
+  padding: 10px var(--s3);
+  background: var(--sunk);
   border-left: 2px solid var(--band, var(--low));
   border-radius: 2px;
 }
-.consequence .cap { display: block; margin-bottom: 4px; }
+.consequence .cap { display: block; margin-bottom: var(--s1); }
 .consequence strong {
   display: block;
   font-family: 'IBM Plex Sans Condensed', sans-serif;
-  font-size: var(--t-lg);
+  font-size: var(--t-md);
   font-weight: 600;
   line-height: 1.2;
 }
-.consequence p { margin: 3px 0 0; font-size: var(--t-xs); color: var(--muted); }
+.consequence p {
+  margin: 3px 0 0;
+  font-size: var(--t-xs);
+  color: var(--muted);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .consequence-quiet { border-left-color: var(--clear); }
+.consequence-link {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.consequence-link:hover strong { color: var(--action-lift); }
 
-.verdict-next { margin-top: 12px; }
-.verdict-next p { margin: 4px 0 0; font-size: var(--t-sm); line-height: 1.5; }
-.verdict-next em { color: var(--faint); font-style: normal; }
+.verdict-next { margin-top: var(--s4); }
+.verdict-next p { margin: var(--s1) 0 0; font-size: var(--t-sm); line-height: 1.5; }
 
 /* ---------- tabs ---------- */
 
 .tabs {
   display: flex;
-  gap: 0;
-  padding: 0 16px;
-  border-top: 1px solid var(--line-soft);
-  border-bottom: 1px solid var(--line-soft);
+  padding: 0 var(--s4);
+  border-bottom: 1px solid var(--line);
   overflow-x: auto;
   scrollbar-width: none;
+  /* Five tabs do not always fit 356px. Fade the last one out rather than
+     guillotining it, so a clipped label reads as "there is more" instead of
+     as a broken edge. */
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
 }
 .tabs::-webkit-scrollbar { display: none; }
 .tab {
   position: relative;
-  padding: 9px 0;
-  margin-right: 14px;
+  padding: var(--s2) 0;
+  margin-right: var(--s3);
   white-space: nowrap;
   background: none;
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-bottom: 1px solid transparent;
   color: var(--faint);
   font-size: var(--t-xs);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   cursor: pointer;
+  transition: color 120ms;
 }
+.tab:last-child { margin-right: var(--s5); }
 .tab:hover { color: var(--muted); }
 .tab-on { color: var(--text); border-bottom-color: var(--action); }
 .tab-count {
-  margin-left: 5px;
+  margin-left: var(--s1);
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--t-2xs);
+  font-size: var(--t-cap);
   color: var(--faint);
 }
 
 /* ---------- panel content ---------- */
 
-.block { margin-top: 18px; }
-.block:first-child { margin-top: 14px; }
+.block { margin-top: var(--s6); }
+.block:first-child { margin-top: var(--s5); }
 
 .row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
-  padding: 6px 0;
+  gap: var(--s3);
+  padding: var(--s1) 0;
   border-bottom: 1px solid var(--line-soft);
   font-size: var(--t-sm);
 }
@@ -752,95 +776,90 @@ button, input, select { font: inherit; color: inherit; }
 .row > strong { font-weight: 500; text-align: right; }
 .row em { font-style: normal; color: var(--faint); font-size: var(--t-xs); }
 
-.note { margin: 6px 0 0; font-size: var(--t-xs); color: var(--muted); line-height: 1.5; }
+.note { margin: var(--s2) 0 0; font-size: var(--t-xs); color: var(--muted); line-height: 1.5; }
 .provenance {
-  margin: 5px 0 0;
+  margin: var(--s1) 0 0;
   font-size: var(--t-xs);
   color: var(--faint);
   line-height: 1.45;
-  font-style: italic;
 }
 .explain {
-  margin: 8px 0 0;
-  padding: 9px 11px;
-  background: #0d121c;
+  margin: var(--s2) 0 0;
+  padding: var(--s2) var(--s3);
+  background: var(--sunk);
   border-left: 2px solid var(--clear);
   border-radius: 2px;
   font-size: var(--t-xs);
   color: var(--muted);
+  line-height: 1.5;
 }
 .explain-warn { border-left-color: var(--high); }
 
-.direct { padding: 10px 12px; margin-top: 14px; background: #0d121c; border-radius: 2px; }
-.direct-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.direct { padding: 10px var(--s3); margin-top: var(--s5); background: var(--sunk); border-radius: 2px; }
+.direct-head { display: flex; justify-content: space-between; gap: var(--s2); align-items: baseline; }
 .direct-head strong { font-size: var(--t-sm); }
-.direct-head span { font-size: var(--t-xs); text-transform: uppercase; letter-spacing: 0.07em; }
-.direct p { margin: 4px 0 0; font-size: var(--t-xs); color: var(--muted); }
+.direct-head span { font-size: var(--t-cap); text-transform: uppercase; letter-spacing: 0.1em; }
+.direct p { margin: var(--s1) 0 0; font-size: var(--t-xs); color: var(--muted); line-height: 1.45; }
 
-/* Readouts: a row of gauge faces. Value, then what it counts. */
+/* Readouts: a bank of gauge faces sharing one grid. */
 .readout {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   gap: 1px;
-  margin-top: 16px;
+  margin-top: var(--s5);
   background: var(--line-soft);
   border: 1px solid var(--line-soft);
   border-radius: 2px;
 }
-.readout > div { padding: 10px 11px; background: var(--chassis); }
-.readout .v { font-size: var(--t-2xl); }
+.readout > div { padding: 10px var(--s3); background: var(--chassis); }
+.readout .v { font-size: var(--t-xl); }
 .readout .k {
-  margin-top: 3px;
-  font-size: var(--t-2xs);
+  margin-top: var(--s1);
+  font-size: var(--t-cap);
   line-height: 1.35;
   letter-spacing: 0.04em;
   color: var(--faint);
 }
-.readout .k-note { color: var(--faint); font-style: italic; letter-spacing: 0; }
 
-.factors { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 7px; }
+.factors { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: var(--s1); }
 .factors li {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1px 10px;
-  padding: 6px 9px;
-  background: #0d121c;
+  gap: 1px var(--s2);
+  padding: 6px var(--s2);
+  background: var(--sunk);
   border-radius: 2px;
   overflow: hidden;
 }
-.factor-bar {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: var(--action-wash);
-}
+.factor-bar { position: absolute; inset: 0 auto 0 0; background: var(--action-wash); }
 .factor-label, .factor-points, .factor-detail { position: relative; }
 .factor-label { font-size: var(--t-sm); }
 .factor-points { font-size: var(--t-sm); color: var(--muted); }
 .factor-detail { grid-column: 1 / -1; font-size: var(--t-xs); color: var(--faint); }
 
-.dispatch { padding: 7px 0; border-bottom: 1px solid var(--line-soft); }
-.dispatch:last-child { border-bottom: 0; }
+.dispatch { padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
+.dispatch:last-of-type { border-bottom: 0; }
 .dispatch .row { border-bottom: 0; padding: 0; }
-.dispatch-detail { margin: 3px 0 0; font-size: var(--t-xs); color: var(--faint); }
+.dispatch-detail { margin: 3px 0 0; font-size: var(--t-xs); color: var(--faint); line-height: 1.45; }
 
-.pairs { margin: 8px 0 0; display: grid; gap: 4px; }
-.pairs > div { display: flex; justify-content: space-between; gap: 12px; font-size: var(--t-xs); }
+.pairs { margin: var(--s2) 0 0; display: grid; gap: 3px; }
+.pairs > div { display: flex; justify-content: space-between; gap: var(--s3); font-size: var(--t-xs); }
 .pairs dt { color: var(--faint); }
 .pairs dd { margin: 0; text-align: right; }
 
-.why { margin: 8px 0 0; font-size: var(--t-xs); color: var(--muted); line-height: 1.5; }
+.why { margin: var(--s2) 0 0; font-size: var(--t-xs); color: var(--muted); line-height: 1.5; }
 
 /* ---------- affected list ---------- */
 
-.affected { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
-.affected li { background: #0d121c; border-radius: 2px; }
+.affected { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: 3px; }
+.affected li { background: var(--sunk); border-radius: 2px; }
 .affected-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1px 10px;
+  gap: 1px var(--s2);
   width: 100%;
-  padding: 8px 10px;
+  padding: var(--s2) 10px;
   background: none;
   border: 0;
   text-align: left;
@@ -849,72 +868,63 @@ button, input, select { font: inherit; color: inherit; }
 .affected-name { font-size: var(--t-sm); font-weight: 500; }
 .affected-delta { font-size: var(--t-xs); }
 .affected-sub { grid-column: 1 / -1; font-size: var(--t-xs); color: var(--faint); }
-.affected-detail { padding: 0 10px 10px; }
+.affected-detail { padding: 0 10px var(--s2); }
 
-/* ---------- cascade ---------- */
+/* ---------- cascade chain ----------
+   The finding before the evidence: what was hit, what carried the failure,
+   what it reached. */
 
-/* The chain: the finding, before the evidence. Three or four nodes with the
-   network that carried the failure named on each hop. */
-.chain { margin-top: 12px; display: grid; gap: 0; }
+.chain { margin-top: var(--s3); }
 .chain-node {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: 28px minmax(0, 1fr);
   align-items: center;
-  gap: 11px;
+  gap: 10px;
   width: 100%;
-  padding: 10px 11px;
-  background: #0d121c;
+  padding: var(--s2) 10px;
+  background: var(--sunk);
   border: 0;
   border-left: 2px solid var(--low);
   border-radius: 2px;
   text-align: left;
   cursor: pointer;
+  transition: background 120ms;
 }
-.chain-node:hover { background: #111828; }
+.chain-node:hover { background: #10172a; }
 .chain-node[data-level='critical'] { border-left-color: var(--critical); }
 .chain-node[data-level='high'] { border-left-color: var(--high); }
 .chain-node[data-level='moderate'] { border-left-color: var(--moderate); }
 .chain-glyph {
   display: grid;
   place-items: center;
-  width: 30px; height: 30px;
+  width: 28px; height: 28px;
   border: 1px solid var(--line);
   border-radius: 2px;
 }
 .chain-name { font-size: var(--t-sm); font-weight: 500; line-height: 1.25; }
 .chain-role {
-  font-size: var(--t-2xs);
-  letter-spacing: 0.1em;
+  font-size: var(--t-cap);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--faint);
 }
 
-/* The hop between two nodes, carrying the network that moved the failure. */
-.chain-hop {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 3px 0 3px 15px;
-}
-.chain-hop i {
-  width: 1px;
-  height: 22px;
-  background: currentColor;
-  opacity: 0.5;
-}
+/* The hop, carrying the network that moved the failure. */
+.chain-hop { display: flex; align-items: center; gap: var(--s2); padding: 2px 0 2px 15px; }
+.chain-hop i { width: 1px; height: 20px; background: currentColor; opacity: 0.55; }
 .chain-hop span {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--t-2xs);
-  letter-spacing: 0.09em;
+  font-size: var(--t-cap);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .chain-hop em { font-style: normal; color: var(--faint); letter-spacing: 0.06em; }
 
-.cascade-scroll { margin-top: 14px; overflow-x: auto; }
+.cascade-scroll { margin-top: var(--s3); overflow-x: auto; }
 .cascade-band {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 9px;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   fill: var(--faint);
 }
@@ -923,36 +933,36 @@ button, input, select { font: inherit; color: inherit; }
 .cascade-node-meta { font-size: 9px; fill: var(--faint); }
 
 .cascade-detail {
-  margin-top: 12px;
-  padding: 11px 12px;
-  background: #0d121c;
+  margin-top: var(--s3);
+  padding: 10px var(--s3);
+  background: var(--sunk);
   border-left: 2px solid var(--action);
   border-radius: 2px;
 }
 .cascade-detail h3 {
   margin: 0;
   font-family: 'IBM Plex Sans Condensed', sans-serif;
-  font-size: var(--t-lg);
+  font-size: var(--t-md);
   font-weight: 600;
 }
 
 /* ---------- comparison ---------- */
 
-.table-scroll { margin-top: 10px; overflow-x: auto; }
+.table-scroll { margin-top: var(--s2); overflow-x: auto; }
 .compare { width: 100%; border-collapse: collapse; font-size: var(--t-xs); }
 .compare thead th {
-  padding: 0 8px 6px 0;
+  padding: 0 var(--s2) var(--s1) 0;
   text-align: right;
-  font-size: var(--t-2xs);
+  font-size: var(--t-cap);
   font-weight: 500;
-  letter-spacing: 0.11em;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--faint);
   border-bottom: 1px solid var(--line);
 }
 .compare thead th:first-child { text-align: left; }
 .compare tbody th {
-  padding: 7px 8px 7px 0;
+  padding: 7px var(--s2) 7px 0;
   text-align: left;
   font-weight: 500;
   color: var(--text);
@@ -961,11 +971,12 @@ button, input, select { font: inherit; color: inherit; }
 .compare tbody th em {
   display: block;
   font-style: normal;
-  font-size: var(--t-2xs);
+  font-size: var(--t-cap);
   color: var(--faint);
+  line-height: 1.4;
 }
 .compare td {
-  padding: 7px 8px 7px 0;
+  padding: 7px var(--s2) 7px 0;
   text-align: right;
   border-bottom: 1px solid var(--line-soft);
   white-space: nowrap;
@@ -976,40 +987,36 @@ button, input, select { font: inherit; color: inherit; }
 
 /* ---------- actions ---------- */
 
-.action-group { margin-top: 16px; }
+.action-group { margin-top: var(--s5); }
 .action-heading {
   display: flex;
   align-items: center;
-  gap: 9px;
-  margin: 0 0 7px;
+  gap: var(--s2);
+  margin: 0 0 var(--s2);
   font-family: 'IBM Plex Sans Condensed', sans-serif;
-  font-size: var(--t-md);
+  font-size: var(--t-sm);
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .action-heading::after { content: ''; flex: 1 1 auto; height: 1px; background: var(--line-soft); }
 .action-heading > span {
   order: 3;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--t-2xs);
+  font-size: var(--t-cap);
+  font-weight: 400;
   color: var(--faint);
 }
-.action-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.action-list li { padding: 9px 11px; background: #0d121c; border-radius: 2px; }
-.action-where {
-  font-size: var(--t-2xs);
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: var(--faint);
-}
+.action-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.action-list li { padding: var(--s2) var(--s3); background: var(--sunk); border-radius: 2px; }
+.action-where { font-size: var(--t-cap); letter-spacing: 0.13em; text-transform: uppercase; color: var(--faint); }
 .action-text { margin: 3px 0 0; font-size: var(--t-sm); line-height: 1.45; }
-.action-basis { margin: 4px 0 0; font-size: var(--t-xs); color: var(--faint); font-style: italic; }
+.action-basis { margin: var(--s1) 0 0; font-size: var(--t-xs); color: var(--faint); line-height: 1.45; }
 
 /* ---------- timeline (panel) ---------- */
 
-.timeline { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; }
-.timeline li { display: grid; grid-template-columns: 52px 1fr; gap: 10px; }
+.timeline { list-style: none; margin: var(--s3) 0 0; padding: 0; display: grid; gap: 3px; }
+.timeline li { display: grid; grid-template-columns: 50px minmax(0, 1fr); gap: var(--s2); }
 .timeline-time {
   font-family: 'IBM Plex Mono', monospace;
   font-size: var(--t-xs);
@@ -1017,40 +1024,44 @@ button, input, select { font: inherit; color: inherit; }
   padding-top: 9px;
   text-align: right;
 }
-.timeline-body { padding: 8px 11px; background: #0d121c; border-radius: 2px; }
+.timeline-body { padding: var(--s2) var(--s3); background: var(--sunk); border-radius: 2px; }
 .timeline-body strong { font-size: var(--t-sm); font-weight: 500; }
-.timeline-body p { margin: 3px 0 0; font-size: var(--t-xs); color: var(--muted); }
+.timeline-body p { margin: 3px 0 0; font-size: var(--t-xs); color: var(--muted); line-height: 1.45; }
 
-/* ---------- event strip ---------- */
+/* ---------- event strip ----------
+   Flush along the bottom of the aperture, part of the chassis. */
 
 .strip-rail {
   position: absolute;
-  left: calc(var(--rail-w) + 24px);
-  right: calc(var(--deck-w) + 24px);
-  bottom: 12px;
+  left: var(--rail-w);
+  right: var(--deck-w);
+  bottom: 0;
   height: var(--strip-h);
   z-index: 780;
   display: flex;
   align-items: stretch;
-  box-shadow: var(--float);
+  background: var(--chassis);
+  border-top: 1px solid var(--line);
 }
+.layout[data-deck='closed'] .strip-rail { right: 0; }
+
 .strip-lead {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0 16px;
+  gap: 3px;
+  padding: 0 var(--s4);
   border-right: 1px solid var(--line);
-  min-width: 152px;
+  min-width: 140px;
 }
-.strip-lead .display { font-size: var(--t-lg); }
+.strip-lead .display { font-size: var(--t-md); }
 
 .strip-track {
   position: relative;
   flex: 1 1 auto;
   display: flex;
   align-items: center;
-  gap: 0;
-  padding: 0 16px;
+  padding: 0 var(--s4);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -1058,27 +1069,28 @@ button, input, select { font: inherit; color: inherit; }
 .strip-track::before {
   content: '';
   position: absolute;
-  left: 16px; right: 16px; top: 50%;
+  left: var(--s4); right: var(--s4); top: 50%;
   height: 1px;
   background: var(--line);
 }
 .strip-event {
   position: relative;
   flex: 0 0 auto;
-  padding: 0 18px 0 0;
+  padding: 0 var(--s5) 0 0;
   background: none;
   border: 0;
   text-align: left;
   cursor: pointer;
-  min-width: 108px;
+  min-width: 104px;
+  animation: settle 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .strip-dot {
   display: block;
-  width: 7px; height: 7px;
+  width: 6px; height: 6px;
   border-radius: 50%;
   background: var(--low);
-  border: 1px solid var(--chassis);
-  margin-bottom: 5px;
+  box-shadow: 0 0 0 3px var(--chassis);
+  margin-bottom: var(--s1);
 }
 .strip-event[data-level='critical'] .strip-dot { background: var(--critical); }
 .strip-event[data-level='high'] .strip-dot { background: var(--high); }
@@ -1087,8 +1099,8 @@ button, input, select { font: inherit; color: inherit; }
 .strip-t {
   display: block;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--t-2xs);
-  letter-spacing: 0.06em;
+  font-size: var(--t-cap);
+  letter-spacing: 0.08em;
   color: var(--faint);
 }
 .strip-label {
@@ -1096,48 +1108,50 @@ button, input, select { font: inherit; color: inherit; }
   font-size: var(--t-xs);
   line-height: 1.3;
   color: var(--muted);
-  max-width: 152px;
+  max-width: 148px;
+  transition: color 120ms;
 }
 .strip-event:hover .strip-label { color: var(--text); }
 .strip-empty {
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  padding: 0 var(--s4);
   font-size: var(--t-xs);
   color: var(--faint);
+  max-width: 62ch;
+  line-height: 1.5;
 }
 
-/* Collapsed verdict, when the deck is put away. */
+/* Collapsed verdict: flush to the chassis edge, same seam, no float. */
 .reopen {
   position: absolute;
-  right: 12px;
-  top: calc(var(--bar-h) + 12px);
+  right: 0;
+  top: var(--bar-h);
   z-index: 800;
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 11px 14px;
-  background: var(--panel);
-  backdrop-filter: blur(14px);
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  background: var(--chassis);
   border: 0;
+  border-left: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   border-top: 2px solid var(--band, var(--low));
-  border-radius: 2px;
-  box-shadow: var(--float);
   cursor: pointer;
   text-align: left;
   max-width: 300px;
 }
-.reopen .display { font-size: var(--t-2xl); color: var(--band); }
+.reopen .display { font-size: var(--t-xl); color: var(--band); }
 .reopen span { font-size: var(--t-xs); color: var(--muted); line-height: 1.3; }
 
 /* ---------- layers ---------- */
 
-.layers { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 0; margin-top: 4px; }
+.layers { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--s2); margin-top: var(--s1); }
 .layer-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 0;
+  gap: var(--s2);
+  padding: var(--s1) 0;
   font-size: var(--t-xs);
   color: var(--muted);
   cursor: pointer;
@@ -1145,10 +1159,10 @@ button, input, select { font: inherit; color: inherit; }
 }
 .layer-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
 .layer-pip {
-  width: 22px; height: 12px;
+  width: 20px; height: 11px;
   flex: 0 0 auto;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 6px;
   position: relative;
   transition: background 140ms, border-color 140ms;
 }
@@ -1156,13 +1170,13 @@ button, input, select { font: inherit; color: inherit; }
   content: '';
   position: absolute;
   top: 1px; left: 1px;
-  width: 8px; height: 8px;
+  width: 7px; height: 7px;
   border-radius: 50%;
   background: var(--faint);
   transition: transform 140ms, background 140ms;
 }
 .layer-toggle input:checked + .layer-pip { border-color: var(--action); background: var(--action-wash); }
-.layer-toggle input:checked + .layer-pip::after { transform: translateX(10px); background: var(--action); }
+.layer-toggle input:checked + .layer-pip::after { transform: translateX(9px); background: var(--action); }
 .layer-toggle input:focus-visible + .layer-pip { outline: 1px solid var(--action); outline-offset: 2px; }
 .layer-toggle input:checked ~ span { color: var(--text); }
 
@@ -1170,11 +1184,11 @@ button, input, select { font: inherit; color: inherit; }
 
 .history {
   list-style: none;
-  margin: 4px 0 0;
+  margin: var(--s1) 0 0;
   padding: 0;
   display: grid;
-  gap: 3px;
-  max-height: 152px;
+  gap: 2px;
+  max-height: 146px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
@@ -1182,71 +1196,74 @@ button, input, select { font: inherit; color: inherit; }
 .history button {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 1px 10px;
+  gap: 1px var(--s2);
   width: 100%;
-  padding: 7px 9px;
-  background: #0d121c;
+  padding: 6px var(--s2);
+  background: var(--sunk);
   border: 0;
   border-radius: 2px;
   text-align: left;
   cursor: pointer;
 }
-.history button:hover { background: #111828; }
+.history button:hover { background: #10172a; }
 .history-score {
   grid-row: 1 / 3;
   align-self: center;
   font-family: 'IBM Plex Sans Condensed', sans-serif;
   font-weight: 600;
-  font-size: var(--t-lg);
+  font-size: var(--t-md);
 }
-.history-title {
-  font-size: var(--t-xs);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.history button em { font-style: normal; font-size: var(--t-2xs); color: var(--faint); }
+.history-title { font-size: var(--t-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history button em { font-style: normal; font-size: var(--t-cap); color: var(--faint); }
 
 /* ---------- technical disclosure ---------- */
 
-.technical { margin-top: 10px; }
+.technical { margin-top: var(--s3); }
 .technical > summary {
   font-size: var(--t-xs);
   color: var(--faint);
   cursor: pointer;
-  padding: 4px 0;
+  padding: 3px 0;
   list-style: none;
 }
 .technical > summary::-webkit-details-marker { display: none; }
 .technical > summary::before { content: '+ '; font-family: 'IBM Plex Mono', monospace; }
 .technical[open] > summary::before { content: '− '; }
 .technical > summary:hover { color: var(--muted); }
-.gap-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 3px; }
-.gap-list li { padding: 7px 10px; background: #0d121c; border-radius: 2px; font-size: var(--t-xs); }
-.coverage { margin: 8px 0 0; display: grid; gap: 3px; font-size: var(--t-xs); }
-.coverage > div { display: flex; justify-content: space-between; gap: 12px; }
+.gap-list { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: 2px; }
+.gap-list li {
+  padding: 7px 10px;
+  background: var(--sunk);
+  border-radius: 2px;
+  font-size: var(--t-xs);
+  line-height: 1.45;
+}
+.coverage { margin: var(--s2) 0 0; display: grid; gap: 2px; font-size: var(--t-xs); }
+.coverage > div { display: flex; justify-content: space-between; gap: var(--s3); }
 .coverage dt { color: var(--faint); text-transform: capitalize; }
 .coverage dd { margin: 0; color: var(--muted); }
 
 /* ---------- start state ---------- */
 
-.start { padding: 20px 18px; }
+.start { padding: var(--s5) var(--s4); }
 .start h2 {
   margin: 0;
   font-family: 'IBM Plex Sans Condensed', sans-serif;
   font-size: var(--t-xl);
   font-weight: 600;
+  line-height: 1.1;
 }
-.start > p { margin: 6px 0 0; font-size: var(--t-sm); color: var(--muted); }
-.start ol { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 9px; counter-reset: step; }
+.start > p { margin: var(--s2) 0 0; font-size: var(--t-sm); color: var(--muted); line-height: 1.5; }
+.start ol { margin: var(--s5) 0 0; padding: 0; list-style: none; display: grid; gap: var(--s3); counter-reset: step; }
 /* Indent from the number rather than laying the row out as a grid: the trailing
-   text after <b> is an anonymous grid item, and it lands in the 22px counter
-   column and wraps one word per line. */
+   text after <b> is an anonymous grid item, and it lands in the counter column
+   and wraps one word per line. */
 .start li {
   position: relative;
-  padding-left: 26px;
+  padding-left: var(--s6);
   font-size: var(--t-xs);
   color: var(--muted);
+  line-height: 1.5;
   counter-increment: step;
 }
 .start li::before {
@@ -1255,52 +1272,58 @@ button, input, select { font: inherit; color: inherit; }
   left: 0;
   top: 1px;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--t-2xs);
+  font-size: var(--t-cap);
   color: var(--action);
 }
 .start li b { color: var(--text); font-weight: 600; }
 
 .banner {
-  padding: 9px 11px;
-  background: rgba(255, 95, 82, 0.09);
+  margin: var(--s3) var(--s4) 0;
+  padding: var(--s2) var(--s3);
+  background: rgba(255, 95, 82, 0.08);
   border-left: 2px solid var(--critical);
   border-radius: 2px;
   font-size: var(--t-xs);
   color: #ffb4ae;
 }
 
-/* ---------- run sequence ----------
-   Real stages, shown while the request is actually in flight. If the engine
-   answers in 120 ms the sequence never gets past the first line, which is the
-   truth about how fast it is. No timed fake. */
+/* ---------- motion ----------
+   One orchestrated moment, and it answers an action: the operator runs a
+   scenario and the instrument settles onto the reading. Nothing else moves by
+   itself except the live incident. */
 
 .run-stages {
   position: absolute;
-  left: 50%;
-  top: calc(var(--bar-h) + 22px);
-  transform: translateX(-50%);
+  left: calc(var(--rail-w) + var(--s5));
+  top: calc(var(--bar-h) + var(--s5));
   z-index: 950;
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 9px 16px;
-  background: var(--panel);
-  backdrop-filter: blur(14px);
+  gap: 10px;
+  padding: var(--s2) var(--s4);
+  background: rgba(9, 13, 20, 0.94);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--line);
   border-radius: 2px;
-  box-shadow: var(--float);
   font-family: 'IBM Plex Mono', monospace;
-  font-size: var(--t-2xs);
-  letter-spacing: 0.12em;
+  font-size: var(--t-cap);
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted);
 }
 .run-stages i {
-  width: 6px; height: 6px;
+  width: 5px; height: 5px;
   border-radius: 50%;
   background: var(--action);
   animation: pip 900ms ease-in-out infinite;
 }
-@keyframes pip { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes pip { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+@keyframes settle {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
+.settle { animation: settle 400ms cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 /* ---------- map furniture ---------- */
 
@@ -1310,14 +1333,14 @@ button, input, select { font: inherit; color: inherit; }
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: 14px;
+  gap: var(--s3);
   color: var(--faint);
   font-size: var(--t-xs);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 .pulse {
-  width: 26px; height: 26px;
+  width: 24px; height: 24px;
   border: 1px solid var(--line);
   border-top-color: var(--action);
   border-radius: 50%;
@@ -1325,115 +1348,108 @@ button, input, select { font: inherit; color: inherit; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.leaflet-container { background: #070a10; font: inherit; }
-/* OpenStreetMap ships one raster style and it is a light one. Inverting the
-   tile pane and rotating the hue back gives a dark ground with legible labels,
-   from the same tiles the attribution names — no key, no second provider. */
+.leaflet-container { background: var(--void); font: inherit; }
+
+/* OpenStreetMap ships one raster style and it is a light one. Inverted and
+   pushed almost to greyscale it becomes a ground — coastline, water and built
+   form as a silhouette — with its own labels quiet enough to sit under ours.
+   The road network drawn on top is our data, not this picture. */
 .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(180deg) brightness(0.88) contrast(0.92) saturate(0.32);
+  filter: invert(1) hue-rotate(180deg) brightness(0.52) contrast(0.7) saturate(0.05);
 }
 
 .leaflet-control-attribution {
-  background: rgba(5, 7, 12, 0.72) !important;
+  background: rgba(5, 7, 12, 0.7) !important;
   color: var(--faint) !important;
-  font-size: 10px !important;
+  font-size: 9px !important;
   padding: 1px 6px !important;
 }
 .leaflet-control-attribution a { color: var(--muted) !important; }
 
+.leaflet-control-zoom { margin: var(--s3) !important; }
 .leaflet-control-zoom a {
-  background: var(--panel) !important;
+  background: rgba(9, 13, 20, 0.9) !important;
   color: var(--muted) !important;
   border: 1px solid var(--line) !important;
   border-radius: 2px !important;
-  width: 26px !important;
-  height: 26px !important;
-  line-height: 24px !important;
+  width: 24px !important;
+  height: 24px !important;
+  line-height: 22px !important;
   margin-bottom: 3px;
+  backdrop-filter: blur(10px);
 }
 .leaflet-control-zoom a:hover { color: var(--text) !important; }
 
 .leaflet-tooltip {
-  background: rgba(8, 12, 20, 0.96) !important;
+  background: rgba(7, 11, 18, 0.97) !important;
   border: 1px solid var(--line) !important;
   border-radius: 2px !important;
-  box-shadow: var(--float) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
   color: var(--text) !important;
   font-size: var(--t-xs) !important;
-  padding: 6px 9px !important;
+  padding: 6px var(--s2) !important;
+  line-height: 1.45 !important;
 }
 .leaflet-tooltip::before { display: none !important; }
 .leaflet-tooltip em { color: var(--faint); font-style: normal; }
 
-/* The incident. One pulsing ring, and it is the only glow in the interface. */
-.incident-pin {
-  width: 34px; height: 34px;
-  display: grid;
-  place-items: center;
-}
+/* The incident. One sweeping ring, and it is the only glow in the interface. */
+.incident-pin { width: 32px; height: 32px; display: grid; place-items: center; }
 .incident-pin span {
-  width: 11px; height: 11px;
+  width: 9px; height: 9px;
   border-radius: 50%;
   background: var(--critical);
-  box-shadow: 0 0 0 3px rgba(255, 95, 82, 0.22), 0 0 14px rgba(255, 95, 82, 0.5);
+  box-shadow: 0 0 0 3px rgba(255, 95, 82, 0.2), 0 0 12px rgba(255, 95, 82, 0.55);
 }
 .incident-pin::before {
   content: '';
   position: absolute;
-  width: 34px; height: 34px;
+  width: 32px; height: 32px;
   border: 1px solid var(--critical);
   border-radius: 50%;
-  animation: sweep 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+  animation: sweep 2.6s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
 }
 @keyframes sweep {
-  0% { transform: scale(0.34); opacity: 0.85; }
+  0% { transform: scale(0.3); opacity: 0.8; }
   100% { transform: scale(1.5); opacity: 0; }
 }
 
-/* Cascade propagation: the dependency line draws itself once, in round order,
-   when a result arrives. */
-.cascade-trace { stroke-dasharray: 5 4; animation: flow 1.6s linear infinite; }
+/* Dependency links show which way the failure travelled. */
+.cascade-trace { stroke-dasharray: 5 4; animation: flow 1.8s linear infinite; }
 @keyframes flow { to { stroke-dashoffset: -18; } }
 
 /* ---------- responsive ----------
-   Desktop first. Narrower: the rails become overlays the operator summons, and
-   the map keeps the screen. */
+   Desktop first. The map never gives up the screen — the rails narrow, then
+   the strip goes, then the console becomes a sheet along the bottom. */
 
 @media (max-width: 1400px) {
-  :root { --deck-w: 366px; --rail-w: 278px; }
+  :root { --deck-w: 358px; --rail-w: 272px; }
 }
 
-/* Narrower than this the two rails and the map cannot all have room, so the
-   strip goes first: it is a second reading of the timeline, which is still a
-   tab away. */
 @media (max-width: 1160px) {
-  :root { --deck-w: 328px; --rail-w: 252px; --t-4xl: 46px; }
+  :root { --deck-w: 324px; --rail-w: 248px; --strip-h: 0px; --t-3xl: 44px; }
   .strip-rail { display: none; }
-  .rail { bottom: 12px; }
 }
 
-/* Below this a side column would leave no map. The console becomes a sheet
-   along the bottom, and the assessment opens over it — the map keeps the
-   screen, and the score and incident stay legible on the collapsed chip. */
 @media (max-width: 880px) {
-  .rail-left {
-    left: 12px; right: 12px; width: auto;
-    top: auto; bottom: 12px;
-    max-height: 48vh;
+  :root { --rail-w: 0px; --deck-w: 0px; }
+  .mark { width: auto; min-width: 0; }
+  .rail {
+    left: 0; right: 0; width: auto;
+    border: 0;
+    border-top: 1px solid var(--line);
   }
-  .rail-right {
-    left: 12px; right: 12px; width: auto;
-    bottom: auto;
-    max-height: calc(100vh - var(--bar-h) - 24px);
-  }
-  .reopen { max-width: none; left: 12px; right: 12px; }
+  .rail-left { top: auto; bottom: 0; max-height: 46vh; }
+  .rail-right { bottom: auto; max-height: calc(100vh - var(--bar-h)); border-top: 0; }
+  .reopen { left: 0; right: 0; max-width: none; border-left: 0; }
+  .aperture { display: none; }
+  .run-stages { left: var(--s4); }
 }
 
 @media (max-width: 720px) {
-  .mark { min-width: 0; padding: 0 12px; }
   .mark span { display: none; }
   .bar-readout { display: none; }
-  .bar-search { padding: 0 12px; }
+  .bar-search { padding: 0 var(--s3); }
   .readout { grid-template-columns: 1fr 1fr; }
   .layers { grid-template-columns: 1fr; }
 }

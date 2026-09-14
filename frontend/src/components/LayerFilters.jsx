@@ -10,8 +10,7 @@ const LAYERS = [
 
 export default function LayerFilters({ layers, setLayers }) {
   return (
-    <section className="panel instrument">
-      <span className="ticks" />
+    <section className="panel">
       <div className="head"><span className="cap">Map layers</span></div>
       <div className="layers">
         {LAYERS.map(([key, label]) => (
